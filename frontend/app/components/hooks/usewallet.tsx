@@ -15,7 +15,7 @@ export function useWallet() {
         return; // Don't auto-connect if user disconnected
       }
 
-      if (typeof window !== 'undefined' && window.ethereum) {
+      if (window.ethereum) {
         try {
           const accounts = await window.ethereum.request({
             method: 'eth_accounts'
@@ -31,11 +31,12 @@ export function useWallet() {
       }
     };
 
+    // Only run on client-side
     checkConnection();
   }, []);
 
   const connectWallet = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
+    if (window.ethereum) {
       try {
         setIsConnecting(true);
         localStorage.removeItem('walletDisconnected'); // Clear disconnected state
@@ -65,34 +66,11 @@ export function useWallet() {
       alert("MetaMask not found. Please install it or enable it for this site.");
     }
   };
-  
+
   const disconnectWallet = () => {
     setAccount(null);
     localStorage.setItem('walletDisconnected', 'true'); // Remember disconnected state
   };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const handleAccountsChanged = (accounts: string[]) => {
-        if (accounts.length > 0) {
-          const isDisconnected = localStorage.getItem('walletDisconnected') === 'true';
-          if (!isDisconnected) {
-            setAccount(accounts[0]);
-          }
-        } else {
-          setAccount(null);
-        }
-      };
-      
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      
-      return () => {
-        if (window.ethereum && window.ethereum.removeListener) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        }
-      };
-    }
-  }, []);
 
   return { account, connectWallet, disconnectWallet, isConnecting };
 }
