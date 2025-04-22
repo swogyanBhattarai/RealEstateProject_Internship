@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useWallet } from './hooks/usewallet';
 import { Menu, X } from 'lucide-react';
+import { useToast } from './ui/toast';
 
 export default function Navbar() {
   const { account, connectWallet, disconnectWallet, isConnecting } = useWallet();
@@ -29,6 +30,7 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [scrolled]);
   
+  // Replace the Buy and Sell links with these conditional links
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-700 ${
       scrolled 
@@ -37,15 +39,44 @@ export default function Navbar() {
     } px-8 flex items-center`}>
       {/* Left side - Navigation links */}
       <div className="hidden md:flex gap-8 text-sm font-medium mr-auto">
-        <Link href="/buy" className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}>
-          Buy
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
-        </Link>
-        
-        <Link href="/sell" className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}>
-          Sell
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
-        </Link>
+      
+        {account ? (
+          <Link href="/page/buy" className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}>
+            Buy
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
+          </Link>
+        ) : (
+          <button 
+            onClick={() => {
+              alert('You need to connect your wallet to access property listings.');
+            }}
+            className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}
+          >
+            Buy
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
+          </button>
+        )}
+
+        <div className="hidden md:flex space-x-8">
+          
+          {account ? (
+            <Link href="/page/sell" className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}>
+              Sell
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          ) : (
+            <button 
+              onClick={() => {
+                alert('You need to connect your wallet to list properties for sale.');
+              }}
+              className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}
+            >
+              Sell
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
+            </button>
+          )}
+          
+        </div>
       </div>
       
       {/* Mobile menu button */}
@@ -111,7 +142,7 @@ export default function Navbar() {
         <div className="md:hidden fixed inset-0 top-[72px] bg-white/95 backdrop-blur-lg z-40 p-6 animate-fadeIn shadow-xl">
           <div className="flex flex-col gap-6">
             <Link 
-              href="/buy" 
+              href="/page/buy"
               className="text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-2 text-lg border-b border-gray-100 pb-3"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -128,7 +159,7 @@ export default function Navbar() {
             </Link> */}
           
             <Link 
-              href="/sell" 
+              href="/page/sell" 
               className="text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-2 text-lg border-b border-gray-100 pb-3"
               onClick={() => setMobileMenuOpen(false)}
             >
