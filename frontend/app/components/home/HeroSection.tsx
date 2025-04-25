@@ -28,13 +28,13 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <div className="relative h-[500px] md:h-[550px]">
+    <div className="relative h-[600px] md:h-[550px] bg-black">
       {/* Background Image Slideshow */}
       <div className="absolute inset-0 overflow-hidden">
         {houseImages.map((img, index) => (
           <div
             key={index}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
+            className={`absolute inset-0 transition-opacity duration-2000 ${
               index === currentImageIndex ? "opacity-100" : "opacity-0"
             }`}
           >
@@ -43,21 +43,23 @@ export default function HeroSection() {
               alt={`Luxury home ${index + 1}`}
               fill
               priority={index === 0}
-              className="object-cover"
+              className="object-cover scale-[1.02] transform transition-transform duration-10000 animate-slow-zoom"
             />
           </div>
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/60 to-black/700" />
       </div>
 
       <div className="relative h-full flex flex-col justify-center px-4 mx-auto max-w-7xl sm:px-6 lg:px-8 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
-          Find Your Dream Home
-        </h1>
-        <p className="max-w-2xl mx-auto mt-4 text-lg text-gray-200">
-          Discover exceptional properties that match your lifestyle and
-          aspirations with our premium real estate services.
-        </p>
+        <div className="animate-fade-in-up">
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+            Find Your Dream Home
+          </h1>
+          <p className="max-w-2xl mx-auto mt-4 text-lg text-gray-200">
+            Discover exceptional properties that match your lifestyle and
+            aspirations with our premium real estate services.
+          </p>
+        </div>
       </div>
     </div>
   );

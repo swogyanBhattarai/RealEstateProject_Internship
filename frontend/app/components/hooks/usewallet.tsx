@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Cookies from 'js-cookie';
 
 export function useWallet() {
   const [account, setAccount] = useState<string | null>(null);
@@ -24,6 +25,7 @@ export function useWallet() {
           if (accounts.length > 0) {
             setAccount(accounts[0]);
             localStorage.removeItem('walletDisconnected'); // Clear disconnected state
+            Cookies.set('walletConnected', 'true', { expires: 1 }); // Set cookie for 1 day
           }
         } catch (err) {
           console.error("Error checking wallet connection:", err);
@@ -32,7 +34,9 @@ export function useWallet() {
     };
 
     // Only run on client-side
-    checkConnection();
+    if (typeof window !== 'undefined') {
+      checkConnection();
+    }
   }, []);
 
   const connectWallet = async () => {
@@ -53,6 +57,7 @@ export function useWallet() {
         
         if (accounts.length > 0) {
           setAccount(accounts[0]);
+          Cookies.set('walletConnected', 'true', { expires: 1 }); // Set cookie for 1 day
         }
       } catch (err) {
         console.error("Error connecting wallet:", err);
@@ -70,6 +75,7 @@ export function useWallet() {
   const disconnectWallet = () => {
     setAccount(null);
     localStorage.setItem('walletDisconnected', 'true'); // Remember disconnected state
+    Cookies.remove('walletConnected'); // Remove the cookie
   };
 
   return { account, connectWallet, disconnectWallet, isConnecting };
