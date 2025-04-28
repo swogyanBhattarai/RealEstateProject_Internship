@@ -11,6 +11,8 @@ contract RealEstateTokenFactory {
         string propertyAddress;
         uint256 value;
         address tokenAddress;
+        string[]  propertyImageURLs;
+        
     }
 
     struct Listing {
@@ -37,14 +39,25 @@ contract RealEstateTokenFactory {
     function tokenizeProperty(
         string memory propertyAddress,
         uint256 valueUSD,
-        address originalOwner
+        address originalOwner,
+        string[] memory propertyImageURLs // Added image URL parameter
     ) internal {
         uint256 tokenCount = valueUSD / 50; // $50 per token
         string memory name = string(abi.encodePacked("Property ", properties.length.toString()));
         string memory symbol = string(abi.encodePacked("PROP", properties.length.toString()));
 
         PropertyToken token = new PropertyToken(name, symbol, tokenCount, originalOwner);
-        properties.push(Property(propertyAddress, valueUSD, address(token)));
+        properties.push(Property(propertyAddress, valueUSD, address(token), propertyImageURLs)); // Store image URL
+    }
+
+    function addProperty(
+        string memory propertyAddress,
+        uint256 valueUSD,
+        address originalOwner,
+        string[] memory propertyImageURLs // Added image URL parameter
+    ) external {
+        require(propertyImageURLs.length <= 5, "Only 5 image are allowed.");
+        tokenizeProperty(propertyAddress, valueUSD, originalOwner, propertyImageURLs);
     }
 
     function buyFromSale(uint256 propertyId, uint256 tokenAmount) external payable {
@@ -89,8 +102,25 @@ contract RealEstateTokenFactory {
 
     // --- Getters ---
 
-    function getProperties() external view returns (Property[] memory) {
-        return properties;
+    function getProperties() external view returns (
+        string[] memory propertyAddresses,
+        uint256[] memory values,
+        address[] memory tokenAddresses,
+        string[][] memory propertyImageURLs
+    ) {
+        uint256 propertyCount = properties.length;
+        propertyAddresses = new string[](propertyCount);
+        values = new uint256[](propertyCount);
+        tokenAddresses = new address[](propertyCount);
+        propertyImageURLs = new string[][](propertyCount);
+
+        for (uint256 i = 0; i < propertyCount; i++) {
+            Property storage property = properties[i];
+            propertyAddresses[i] = property.propertyAddress;
+            values[i] = property.value;
+            tokenAddresses[i] = property.tokenAddress;
+            propertyImageURLs[i] = property.propertyImageURLs;
+        }
     }
 
     function getBuyers(uint256 propertyId) external view returns (address[] memory) {

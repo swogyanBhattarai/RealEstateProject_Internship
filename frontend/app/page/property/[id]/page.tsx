@@ -7,11 +7,13 @@ import Navbar from '../../../components/navbar';
 import Footer from '../../../components/footer';
 import { 
   Bed, Bath, Square, MapPin, Calendar, Heart, 
-  ArrowLeft, ArrowRight, Share2, Phone, Mail, MessageSquare 
+  ArrowLeft, ArrowRight, Share2, Phone, Mail, MessageSquare,
+  DollarSign, Tag, Wallet
 } from 'lucide-react';
-
-// Import mock data from the shared data file
-import { mockProperties } from '../../../data/mockProperties';
+import { ethers } from 'ethers';
+import RealEstateTokenFactoryABI from '../../../../contracts/RealEstateTokenFactoryABI.json';
+import PropertyTokenABI from '../../../../contracts/PropertyTokenABI.json';
+import contractAddress from '../../../../contracts/contract-address.json';
 
 export default function PropertyDetails() {
   const params = useParams();
@@ -22,18 +24,515 @@ export default function PropertyDetails() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   
+  // New states for token functionality
+  const [account, setAccount] = useState<string>('');
+  const [tokenAmount, setTokenAmount] = useState<number>(1);
+  const [userBalance, setUserBalance] = useState<number>(0);
+  const [listings, setListings] = useState<any[]>([]);
+  const [listingAmount, setListingAmount] = useState<number>(1);
+  const [listingPrice, setListingPrice] = useState<number>(60); // Default $60 (higher than initial $50)
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  
+  // Connect wallet
+  const connectWallet = async () => {
+    if (typeof window !== 'undefined' && window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        setAccount(accounts[0]);
+      } catch (error) {
+        console.error('Error connecting wallet:', error);
+      }
+    } else {
+      setError('Please install MetaMask to use this feature');
+    }
+  };
+  
   // Fetch property data
   useEffect(() => {
-    // Simulate API call with timeout
-    const timer = setTimeout(() => {
-      // Find property in mock data
-      const foundProperty = Array.isArray(mockProperties) ? mockProperties.find(p => p.id === id) : null;
-      setProperty(foundProperty || null);
-      setLoading(false);
-    }, 500);
+    const fetchProperty = async () => {
+      console.log("Starting to fetch property with ID:", id);
+      if (typeof window !== 'undefined' && window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const contract = new ethers.Contract(
+          contractAddress.RealEstateTokenFactory,
+          RealEstateTokenFactoryABI,
+          provider
+        );
+  
+        try {
+          // Get all properties from the contract
+          console.log("Calling getProperties from contract...");
+          const [propertyAddresses, values, tokenAddresses, propertyImageURLs] = await contract.getProperties();
+          console.log("Properties fetched:", {
+            propertyAddresses,
+            values,
+            tokenAddresses,
+            propertyImageURLs
+          });
+          
+          // Check if the property with the given ID exists
+          if (!propertyAddresses || id >= propertyAddresses.length) {
+            console.log("Property not found for ID:", id);
+            setProperty(null);
+            return;
+          }
+          
+          // Get the specific property data using the ID
+          const propertyAddress = propertyAddresses[id];
+          const value = values[id];
+          const tokenAddress = tokenAddresses[id];
+          const images = propertyImageURLs[id] || [];
+          
+          console.log("Property data for ID", id, ":", {
+            propertyAddress,
+            value: Number(ethers.formatUnits(value, 18)), // Convert BigInt to number
+            tokenAddress,
+            images
+          });
+          
+          // Format the property data to match the expected structure
+          const formattedProperty = {
+            title: propertyAddress || `Property ${id + 1}`,
+            description: "A beautiful property available for investment through blockchain technology. This property has been tokenized to allow fractional ownership.",
+            price: Number(ethers.formatUnits(value, 18)), // Convert BigInt to number
+            bedrooms: 3, // Default values since these aren't stored in the contract
+            bathrooms: 2,
+            area: 1500,
+            address: propertyAddress || "",
+            city: "City", // These could be parsed from the address if formatted consistently
+            state: "State",
+            zipCode: "",
+            propertyType: "Apartment",
+            apartmentType: "",
+            amenities: ["Parking", "Security", "Garden"],
+            // Use the actual images from the blockchain or fallback to defaults
+            images: images.length > 0 
+              ? images.map((img: string) => img.startsWith('http') ? img : `https://gateway.pinata.cloud/ipfs/${img}`)
+              : ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
+            yearBuilt: 2020,
+            featured: true,
+            tokenAddress: tokenAddress,
+            totalTokens: Math.floor(Number(ethers.formatUnits(value, 18)) / 50) // Ensure this is a number, not BigInt
+          };
+          
+          console.log("Formatted property:", formattedProperty);
+          setProperty(formattedProperty);
+          
+          // Get listings for this property
+          console.log("Fetching listings for property ID:", id);
+          const propertyListings = await contract.getListings(id);
+          console.log("Raw listings:", propertyListings);
+          
+          // Convert BigInt values in listings to regular numbers
+          const formattedListings = propertyListings.map((listing: any) => ({
+            seller: listing.seller,
+            tokenAmount: Number(listing.tokenAmount),
+            pricePerToken: Number(ethers.formatUnits(listing.pricePerToken, 18))
+          }));
+          console.log("Formatted listings:", formattedListings);
+          setListings(formattedListings);
+          
+          // Check if user is connected and get their balance
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAccount(accounts[0].address); // Use .address property instead of toString()
+            console.log("Connected account:", accounts[0]);
+            
+            // Get user's token balance if they're connected
+            if (tokenAddress) {
+              const tokenContract = new ethers.Contract(
+                tokenAddress,
+                PropertyTokenABI,
+                provider
+              );
+              
+              const balance = await tokenContract.balanceOf(accounts[0]);
+              const decimals = await tokenContract.decimals();
+              // Use ethers.formatUnits for proper BigInt conversion
+              const userTokenBalance = Number(ethers.formatUnits(balance, decimals));
+              console.log("User token balance:", userTokenBalance);
+              setUserBalance(userTokenBalance);
+              
+              // Also get how many tokens they bought from the initial sale
+              const tokensBought = await contract.getBuyerInfo(id, accounts[0]);
+              // Convert BigInt to string before logging
+              console.log('Tokens bought from initial sale:', tokensBought.toString());
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching property:', error);
+          setProperty(null);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        console.log("Ethereum provider not available");
+        setLoading(false);
+      }
+    };
+
+    fetchProperty();
+  }, [id, account, success]);
+  
+  // Buy tokens from initial sale
+  const buyTokens = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
     
-    return () => clearTimeout(timer);
-  }, [id]);
+    if (tokenAmount <= 0) {
+      setError('Please enter a valid token amount');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        signer
+      );
+      
+      // Calculate cost in ETH (assuming $50 per token as per contract)
+      const costPerToken = 50;
+      const totalCostUSD = tokenAmount * costPerToken;
+      
+      // For demo purposes, using a fixed ETH price. In production, use an oracle
+      const ethPriceUSD = 2000; // 1 ETH = $2000
+      const costInEth = totalCostUSD / ethPriceUSD;
+      
+      // Convert to wei
+      const costInWei = ethers.parseEther(costInEth.toString());
+      
+      // Call the buyFromSale function (not buyTokens as per contract)
+      const tx = await contract.buyFromSale(id, tokenAmount, {
+        value: costInWei
+      });
+      
+      await tx.wait();
+      setSuccess(`Successfully purchased ${tokenAmount} tokens!`);
+      
+      // Refresh user balance
+      const tokenContract = new ethers.Contract(
+        property.tokenAddress,
+        PropertyTokenABI,
+        provider
+      );
+      
+      const balance = await tokenContract.balanceOf(account);
+      const decimals = await tokenContract.decimals();
+      setUserBalance(Number(balance) / (10 ** decimals));
+      
+    } catch (error: any) {
+      console.error('Error buying tokens:', error);
+      setError(error.message || 'Failed to buy tokens. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Create a new listing
+  const createListing = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
+    
+    if (listingAmount <= 0) {
+      setError('Please enter a valid token amount');
+      return;
+    }
+    
+    if (listingPrice <= 0) {
+      setError('Please enter a valid price');
+      return;
+    }
+    
+    if (listingAmount > userBalance) {
+      setError('You don\'t have enough tokens');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      console.log("Creating contract instance with address:", contractAddress.RealEstateTokenFactory);
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        signer
+      );
+      
+      // First approve the contract to transfer tokens
+      console.log("Creating token contract instance with address:", property.tokenAddress);
+      const tokenContract = new ethers.Contract(
+        property.tokenAddress,
+        PropertyTokenABI,
+        signer
+      );
+      
+      const decimals = await tokenContract.decimals();
+      console.log("Token decimals:", decimals);
+      const tokenAmountWithDecimals = BigInt(listingAmount) * BigInt(10 ** decimals);
+      console.log("Token amount with decimals:", tokenAmountWithDecimals.toString());
+      
+      // Approve tokens
+      console.log("Approving tokens for transfer to:", contractAddress.RealEstateTokenFactory);
+      const approveTx = await tokenContract.approve(
+        contractAddress.RealEstateTokenFactory,
+        tokenAmountWithDecimals
+      );
+      console.log("Approval transaction sent:", approveTx.hash);
+      await approveTx.wait();
+      console.log("Approval transaction confirmed");
+      
+      // Create the listing
+      console.log("Converting price to wei:", listingPrice);
+      const ethPriceUSD = 2000; // 1 ETH = $2000
+      const priceInEth = listingPrice / ethPriceUSD;
+      const priceInWei = ethers.parseEther(priceInEth.toString());
+      console.log("Price in wei:", priceInWei.toString());
+      
+      console.log("Listing for sale with params:", {
+        propertyId: id,
+        tokenAmount: listingAmount,
+        priceInWei: priceInWei.toString()
+      });
+      
+      const tx = await contract.listForSale(id, listingAmount, priceInWei);
+      console.log("Listing transaction sent:", tx.hash);
+      await tx.wait();
+      console.log("Listing transaction confirmed");
+      
+      setSuccess('Listing created successfully!');
+      
+      // Refresh listings
+      console.log("Refreshing listings");
+      const propertyListings = await contract.getListings(id);
+      setListings(propertyListings);
+      
+    } catch (error: any) {
+      console.error('Error creating listing:', error);
+      setError(error.message || 'Failed to create listing. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Buy tokens from a listing 
+  const buyFromListingDirect = async (listingIndex: number) => { 
+    if (!account) { 
+      setError('Please connect your wallet first'); 
+      return; 
+    }
+    
+    setIsProcessing(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        signer
+      );
+      
+      // Get the listing details
+      const listing = listings[listingIndex];
+      const tokenAmount = listing.tokenAmount;
+      const pricePerToken = ethers.formatUnits(listing.pricePerToken, 18);
+      const totalCost = Number(tokenAmount) * Number(pricePerToken);
+      
+      // For demo purposes, using a fixed ETH price. In production, use an oracle
+      const ethPriceUSD = 2000; // 1 ETH = $2000
+      const costInEth = totalCost / ethPriceUSD;
+      
+      // Convert to wei
+      const costInWei = ethers.parseEther(costInEth.toString());
+      
+      // Call the buyFromListing function
+      const tx = await contract.buyFromListing(id, listingIndex, {
+        value: costInWei
+      });
+      
+      await tx.wait();
+      setSuccess(`Successfully purchased ${tokenAmount} tokens from listing!`);
+      
+      // Refresh user balance
+      const tokenContract = new ethers.Contract(
+        property.tokenAddress,
+        PropertyTokenABI,
+        provider
+      );
+      
+      const balance = await tokenContract.balanceOf(account);
+      const decimals = await tokenContract.decimals();
+      setUserBalance(Number(balance) / (10 ** decimals));
+      
+    } catch (error: any) {
+      console.error('Error buying from listing:', error);
+      setError(error.message || 'Failed to buy from listing. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // List tokens for sale
+  const listTokensForSale = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
+    
+    if (listingAmount <= 0) {
+      setError('Please enter a valid token amount');
+      return;
+    }
+    
+    if (listingPrice <= 0) {
+      setError('Please enter a valid price per token');
+      return;
+    }
+    
+    if (listingAmount > userBalance) {
+      setError(`You only have ${userBalance} tokens available to list`);
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        signer
+      );
+      
+      // First approve the factory contract to transfer tokens
+      const tokenContract = new ethers.Contract(
+        property.tokenAddress,
+        PropertyTokenABI,
+        signer
+      );
+      
+      // Get token decimals
+      const decimals = await tokenContract.decimals();
+      const tokenAmount = BigInt(listingAmount) * BigInt(10 ** decimals);
+      
+      // Approve the factory contract to transfer tokens
+      const approveTx = await tokenContract.approve(
+        contractAddress.RealEstateTokenFactory,
+        tokenAmount
+      );
+      
+      await approveTx.wait();
+      
+      // Convert price to wei (18 decimals)
+      const priceInWei = ethers.parseEther(listingPrice.toString());
+      
+      // List tokens for sale
+      const tx = await contract.listForSale(id, listingAmount, priceInWei);
+      await tx.wait();
+      
+      setSuccess(`Successfully listed ${listingAmount} tokens for sale at $${listingPrice} each!`);
+      setListingAmount(1);
+      setListingPrice(60);
+      
+    } catch (error: any) {
+      console.error('Error listing tokens for sale:', error);
+      setError(error.message || 'Failed to list tokens for sale. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Buy tokens from a listing
+  const buyFromListing = async (listingIndex: number) => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const signer = await provider.getSigner();
+      
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        signer
+      );
+      
+      // Get the listing details
+      const listing = listings[listingIndex];
+      const tokenAmount = listing.tokenAmount;
+      const pricePerToken = ethers.formatUnits(listing.pricePerToken, 18);
+      const totalCost = Number(tokenAmount) * Number(pricePerToken);
+      
+      // For demo purposes, using a fixed ETH price. In production, use an oracle
+      const ethPriceUSD = 2000; // 1 ETH = $2000
+      const costInEth = totalCost / ethPriceUSD;
+      
+      // Convert to wei
+      const costInWei = ethers.parseEther(costInEth.toString());
+      
+      // Call the buyFromListing function
+      const tx = await contract.buyFromListing(id, listingIndex, {
+        value: costInWei
+      });
+      
+      await tx.wait();
+      setSuccess(`Successfully purchased ${tokenAmount} tokens from listing!`);
+      
+      // Refresh user balance
+      const tokenContract = new ethers.Contract(
+        property.tokenAddress,
+        PropertyTokenABI,
+        provider
+      );
+      
+      const balance = await tokenContract.balanceOf(account);
+      const decimals = await tokenContract.decimals();
+      setUserBalance(Number(balance) / (10 ** decimals));
+      
+    } catch (error: any) {
+      console.error('Error buying from listing:', error);
+      setError(error.message || 'Failed to buy from listing. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Format address for display
+  const formatAddress = (address: string) => {
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
   
   // Handle image navigation
   const nextImage = () => {
@@ -60,6 +559,12 @@ export default function PropertyDetails() {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(price);
+  };
+  
+  // Format ETH price
+  const formatEthPrice = (priceWei: bigint) => {
+    const ethPrice = Number(priceWei) / 1e18;
+    return `${ethPrice.toFixed(6)} ETH`;
   };
   
   if (loading) {
@@ -112,8 +617,13 @@ export default function PropertyDetails() {
               <h1 className="text-3xl font-bold text-white mb-2">{property.title}</h1>
               <div className="flex items-center text-gray-400">
                 <MapPin className="h-4 w-4 mr-1" />
-                <span>{`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}</span>
+                <span>{property.address}</span>
               </div>
+              {property.tokenAddress && (
+                <div className="text-sm text-gray-400 mt-1">
+                  Token Address: {property.tokenAddress.slice(0, 10)}...{property.tokenAddress.slice(-8)}
+                </div>
+              )}
             </div>
             <div className="mt-4 md:mt-0 flex items-center">
               <span className="text-3xl font-bold text-white mr-4">{formatPrice(property.price)}</span>
@@ -147,14 +657,14 @@ export default function PropertyDetails() {
                     disabled={currentImageIndex === 0}
                     className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors disabled:opacity-50"
                   >
-                    <ArrowLeft className="h-5 w-5 text-white" />
+                    <ArrowLeft className="h-5 w-15 text-white" />
                   </button>
                   <button 
                     onClick={nextImage}
                     disabled={currentImageIndex === property.images.length - 1}
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors disabled:opacity-50"
                   >
-                    <ArrowRight className="h-5 w-5 text-white" />
+                    <ArrowRight className="h-5 w-15 text-white" />
                   </button>
                 </>
               )}
@@ -333,4 +843,5 @@ export default function PropertyDetails() {
       <Footer />
     </div>
   );
+
 }

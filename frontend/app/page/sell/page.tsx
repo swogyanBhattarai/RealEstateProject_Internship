@@ -2,7 +2,14 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/navbar'; 
 import Footer from '../../components/footer'; 
-import { Camera, Upload, Check, AlertCircle, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Camera, Check, AlertCircle, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import Image from 'next/image';
+import { ethers } from 'ethers';
+import contractAddress from '../../../contracts/contract-address.json';
+// import PropertyTokenABI from '../../../contracts/PropertyTokenABI.json';
+import RealEstateTokenFactoryABI from '../../../contracts/RealEstateTokenFactoryABI.json';
+import { uploadToIPFS } from  '../../components/utils/contractInteraction'
+
 
 export default function SellPage() {
   // Form state
@@ -31,8 +38,6 @@ export default function SellPage() {
   const [ipfsHashes, setIpfsHashes] = useState<string[]>([]); // Store IPFS hashes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [uploadingToIPFS, setUploadingToIPFS] = useState(false);
-  
   // Step navigation state
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
@@ -75,7 +80,7 @@ export default function SellPage() {
 
   // Validate a single field
   const validateField = (name: string, value: string) => {
-    let newErrors = { ...errors };
+    const newErrors = { ...errors };
     
     // Clear previous error for this field
     delete newErrors[name];
@@ -132,8 +137,7 @@ export default function SellPage() {
   // Validate current step
   const validateStep = (step: number): boolean => {
     let isValid = true;
-    let newErrors: Record<string, string> = {};
-    let newTouched: Record<string, boolean> = { ...touched };
+    const newTouched: Record<string, boolean> = { ...touched };
     
     // Fields to validate for each step
     const stepFields: Record<number, string[]> = {
@@ -150,14 +154,13 @@ export default function SellPage() {
       if (!validateField(field, value)) {
         isValid = false;
         // Re-validate to populate errors
-        const fieldError = validateField(field, value);
+        validateField(field, value);
       }
     });
     
     setTouched(newTouched);
     return isValid;
   };
-
   // Handle amenity selection
   const handleAmenityToggle = (amenity: string) => {
     setFormData(prev => {
@@ -169,45 +172,34 @@ export default function SellPage() {
     });
   };
 
-  // Handle image upload
+  // Limit image uploads to 5
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files);
 
-      // Create preview URLs for the images
+      if (images.length + newFiles.length > 5) {
+        alert('You can only upload up to 5 images.');
+        return;
+      }
+
       const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
 
       setImages(prev => [...prev, ...newFiles]);
       setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-
-      // Later this will upload to IPFS via Pinata
-      // uploadToIPFS(newFiles);
-    }
-  };
-
-  // Function to upload to IPFS via Pinata (to be implemented when contract is ready)
-  const uploadToIPFS = async (files: File[]) => {
-    setUploadingToIPFS(true);
-    try {
-      // This is a placeholder for the actual Pinata upload code
-      // When your contract is ready, you'll implement this with Pinata SDK or API
-      console.log('Files to upload to IPFS:', files);
-
-      // Simulate IPFS upload with a delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Mock IPFS hashes for now
-      const mockHashes = files.map((_, index) =>
-        `ipfs://QmHash${Math.random().toString(36).substring(2, 10)}`
-      );
-
-      setIpfsHashes(prev => [...prev, ...mockHashes]);
-      console.log('Uploaded to IPFS with hashes:', mockHashes);
-
-    } catch (error) {
-      console.error('Error uploading to IPFS:', error);
-    } finally {
-      setUploadingToIPFS(false);
+      
+      // Clear any image-related errors when images are uploaded
+      if (errors.images) {
+        setErrors(prev => {
+          const newErrors = {...prev};
+          delete newErrors.images;
+          return newErrors;
+        });
+      }
+      
+      // Reset error status if it was related to images
+      if (submitStatus === 'error') {
+        setSubmitStatus('idle');
+      }
     }
   };
 
@@ -225,87 +217,16 @@ export default function SellPage() {
     }
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate all steps before submitting
-    let isValid = true;
-    for (let step = 1; step <= totalSteps; step++) {
-      if (!validateStep(step)) {
-        isValid = false;
-        setCurrentStep(step);
-        break;
-      }
-    }
-    
-    if (!isValid) {
-      window.scrollTo(0, 0);
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setSubmitStatus('idle');
-
-    try {
-      // Upload images to IPFS first
-      if (images.length > 0) {
-        await uploadToIPFS(images);
-      }
-
-      // Here you would normally send the data to your backend or smart contract
-      // For now, we'll just simulate a successful submission
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      console.log('Form submitted:', formData);
-      console.log('Images:', images);
-      console.log('IPFS Hashes:', ipfsHashes);
-
-      // Reset form after successful submission
-      setFormData({
-        propertyType: 'apartment',
-        apartmentType: '',
-        title: '',
-        description: '',
-        price: '',
-        bedrooms: '',
-        bathrooms: '',
-        area: '',
-        floor: '',
-        totalFloors: '',
-        yearBuilt: '',
-        address: '',
-        city: '',
-        state: '',
-        zipCode: '',
-        amenities: [],
-      });
-
-      // Clear images
-      previewUrls.forEach(url => URL.revokeObjectURL(url));
-      setImages([]);
-      setPreviewUrls([]);
-      setIpfsHashes([]);
-
-      // Reset form state
-      setCurrentStep(1);
-      setErrors({});
-      setTouched({});
-      setSubmitStatus('success');
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Navigation functions
   const nextStep = () => {
     // Validate current step before proceeding
     if (validateStep(currentStep)) {
       if (currentStep < totalSteps) {
         setCurrentStep(currentStep + 1);
+        // Reset any submission error when navigating between steps
+        if (submitStatus === 'error') {
+          setSubmitStatus('idle');
+        }
         window.scrollTo(0, 0);
       }
     }
@@ -314,9 +235,73 @@ export default function SellPage() {
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      // Reset any submission error when navigating between steps
+      if (submitStatus === 'error') {
+        setSubmitStatus('idle');
+      }
       window.scrollTo(0, 0);
     }
   };
+
+  // When submitting the form
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (images.length === 0) {
+      setErrors(prev => ({ ...prev, images: 'At least one image is required' }));
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    
+    try {
+      // Upload images to IPFS first
+      const imageHashes = await Promise.all(
+        images.map(image => uploadToIPFS(image))
+      );
+      
+      setIpfsHashes(imageHashes);
+      
+      // Connect to Ethereum
+      if (typeof window !== 'undefined' && window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        
+        // Create contract instance
+        const contract = new ethers.Contract(
+          contractAddress.RealEstateTokenFactory,
+          RealEstateTokenFactoryABI,
+          signer
+        );
+        
+        // Format the property address
+        const fullAddress = `${formData.address}, ${formData.city}, ${formData.state}, ${formData.zipCode}`;
+        
+        // Convert price to wei (assuming price is in USD)
+        const priceInWei = ethers.parseUnits(formData.price, 18);
+        
+        // Call the addProperty function with only the 4 required parameters
+        const tx = await contract.addProperty(
+          fullAddress,                      // propertyAddress
+          priceInWei,                       // valueUSD
+          await signer.getAddress(),        // originalOwner
+          imageHashes                       // propertyImageURLs
+        );
+        
+        await tx.wait();
+        setSubmitStatus('success');
+      }
+    } catch (error) {
+      console.error('Error submitting property:', error);
+      setSubmitStatus('error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Add this line to ensure handleSubmit is properly bound to the component
+  const onSubmit = handleSubmit;
 
   // Render progress bar
   const renderProgressBar = () => {
@@ -653,18 +638,21 @@ export default function SellPage() {
       
       case 4:
         return (
-          <>
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Amenities</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {availableAmenities.map((amenity) => (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Amenities & Images</h2>
+            
+            {/* Amenities section */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium text-gray-700 mb-3">Amenities</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {availableAmenities.map(amenity => (
                   <div key={amenity} className="flex items-center">
                     <input
                       type="checkbox"
                       id={`amenity-${amenity}`}
                       checked={formData.amenities.includes(amenity)}
                       onChange={() => handleAmenityToggle(amenity)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
                     <label htmlFor={`amenity-${amenity}`} className="ml-2 text-sm text-gray-700">
                       {amenity}
@@ -673,81 +661,82 @@ export default function SellPage() {
                 ))}
               </div>
             </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Apartment Images</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Images will be stored on IPFS via Pinata when you submit the form.
-              </p>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  id="images"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
+            
+            {/* Image upload section */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-700 mb-3">Property Images</h3>
+              <p className="text-sm text-gray-500 mb-4">Upload up to 5 images of your property. The first image will be used as the main image.</p>
+              
+              {/* Display error message for images */}
+              {errors.images && (
+                <div className="text-red-500 text-sm mb-3 flex items-center">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {errors.images}
+                </div>
+              )}
+              
+              {/* Image upload button */}
+              <div className="mb-4">
                 <label
-                  htmlFor="images"
-                  className="cursor-pointer flex flex-col items-center justify-center"
+                  htmlFor="image-upload"
+                  className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
                 >
-                  <Camera className="h-12 w-12 text-gray-400 mb-3" />
-                  <span className="text-sm font-medium text-gray-700">Click to upload images</span>
-                  <span className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP up to 5MB each</span>
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Camera className="w-8 h-8 mb-3 text-gray-400" />
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG or JPEG (MAX. 5 images)</p>
+                  </div>
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                 </label>
               </div>
-
+              
+              {/* Image previews */}
               {previewUrls.length > 0 && (
-                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
                   {previewUrls.map((url, index) => (
                     <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Apartment preview ${index + 1}`}
-                        className="h-24 w-full object-cover rounded-lg"
-                      />
+                      <div className="relative h-32 w-full rounded-lg overflow-hidden">
+                        <Image
+                          src={url}
+                          alt={`Property image ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                         </svg>
                       </button>
+                      {index === 0 && (
+                        <div className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                          Main Image
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </>
+          </div>
         );
       
       default:
         return null;
     }
-  };
-
-  // Render validation summary if there are errors
-  const renderValidationSummary = () => {
-    const currentErrors = Object.keys(errors).filter(key => touched[key]);
-    if (currentErrors.length > 0) {
-      return (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center mb-2">
-            <AlertCircle className="text-red-500 mr-2" />
-            <h3 className="text-red-800 font-medium">Please fix the following errors:</h3>
-          </div>
-          <ul className="list-disc pl-5 text-red-700">
-            {currentErrors.map(key => (
-              <li key={key}>{errors[key]}</li>
-            ))}
-          </ul>
-        </div>
-      );
-    }
-    return null;
   };
   // Render navigation buttons
   const renderNavButtons = () => {
@@ -764,19 +753,17 @@ export default function SellPage() {
             Previous
           </button>
         ) : (
-          <div></div> // Empty div to maintain flex spacing
+          <div></div>
         )}
         
         {currentStep < totalSteps ? (
           <button
             type="button"
             onClick={() => {
-              // Validate current step before proceeding
               const isValid = validateStep(currentStep);
               if (isValid) {
                 nextStep();
               } else {
-                // Scroll to top to show validation errors
                 window.scrollTo(0, 0);
               }
             }}
@@ -818,7 +805,7 @@ export default function SellPage() {
               <Check className="text-green-500 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <h3 className="text-green-800 font-medium">Apartment Listed Successfully!</h3>
-                <p className="text-green-700 mt-1">Your apartment has been submitted for review. We'll notify you once it's live.</p>
+                {/* <p className="text-green-700 mt-1">Your apartment has been submitted for review. We will notify you once it live.</p> */}
               </div>
             </div>
           )}
