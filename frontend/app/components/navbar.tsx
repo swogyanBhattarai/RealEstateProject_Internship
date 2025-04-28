@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useWallet } from './hooks/usewallet';
 import { Menu, X } from 'lucide-react';
-import { useToast } from './ui/toast';
 
 export default function Navbar() {
   const { account, connectWallet, disconnectWallet, isConnecting } = useWallet();

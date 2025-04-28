@@ -1,10 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import { ethers } from 'ethers';
 
 export function useWallet() {
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   
   // Check for existing connection when component mounts
   useEffect(() => {
@@ -18,6 +20,10 @@ export function useWallet() {
 
       if (window.ethereum) {
         try {
+          // Initialize provider
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(ethersProvider);
+          
           const accounts = await window.ethereum.request({
             method: 'eth_accounts'
           }) as string[];
@@ -39,11 +45,46 @@ export function useWallet() {
     }
   }, []);
 
+  useEffect(() => {
+    const checkWalletConnection = async () => {
+        if (account) {
+            // Ensure the wallet connection state is properly updated
+            const isWalletConnected = Cookies.get('walletConnected') === 'true';
+            if (!isWalletConnected) {
+                Cookies.set('walletConnected', 'true', { expires: 1 });
+            }
+        }
+    };
+
+    checkWalletConnection();
+  }, [account]);
+
+  useEffect(() => {
+    const syncWalletState = async () => {
+        if (account) {
+            const isWalletConnected = Cookies.get('walletConnected') === 'true';
+            if (!isWalletConnected) {
+                Cookies.set('walletConnected', 'true', { expires: 1 });
+            }
+        } else {
+            Cookies.remove('walletConnected');
+        }
+    };
+
+    syncWalletState();
+  }, [account]);
+
   const connectWallet = async () => {
     if (window.ethereum) {
       try {
         setIsConnecting(true);
         localStorage.removeItem('walletDisconnected'); // Clear disconnected state
+
+        // Initialize provider if not already done
+        if (!provider) {
+          const ethersProvider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(ethersProvider);
+        }
 
         // Force MetaMask popup
         await window.ethereum.request({
@@ -78,5 +119,5 @@ export function useWallet() {
     Cookies.remove('walletConnected'); // Remove the cookie
   };
 
-  return { account, connectWallet, disconnectWallet, isConnecting };
+  return { account, connectWallet, disconnectWallet, isConnecting, provider };
 }

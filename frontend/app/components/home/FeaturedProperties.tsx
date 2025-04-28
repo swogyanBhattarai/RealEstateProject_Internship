@@ -1,11 +1,13 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield } from 'lucide-react';
-import { mockProperties } from '../../data/mockProperties';
 import { useWallet } from '../hooks/usewallet';
 import { useRouter } from 'next/navigation';
+import { ethers } from 'ethers';
+import RealEstateTokenFactoryABI from '../../../contracts/RealEstateTokenFactoryABI.json';
+import contractAddress from '../../../contracts/contract-address.json';
 
 interface Property {
   id: number;
@@ -30,12 +32,54 @@ interface Property {
 export default function FeaturedProperties() {
   const { account, connectWallet, isConnecting } = useWallet();
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
   const router = useRouter();
 
-  // Get only featured properties and limit to 3 for preview
-  const featuredProperties = mockProperties
-    .filter(property => property.featured)
-    .slice(0, 3);
+  // Fetch featured properties
+  useEffect(() => {
+    const fetchFeaturedProperties = async () => {
+      try {
+        // Directly fetch from the contract instead of using the API
+        if (typeof window !== 'undefined' && window.ethereum) {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const contract = new ethers.Contract(
+            contractAddress.RealEstateTokenFactory,
+            RealEstateTokenFactoryABI,
+            provider
+          );
+
+          const properties = await contract.getProperties();
+          
+          // Format the properties data
+          const formattedProperties = properties.slice(0, 3).map((property: any, index: number) => ({
+            id: index,
+            title: property.propertyAddress || `Property ${index + 1}`,
+            description: property.description || "A beautiful property available for investment",
+            price: Number(property.value) / 1e18,
+            bedrooms: property.bedrooms || 3,
+            bathrooms: property.bathrooms || 2,
+            area: property.area || 1500,
+            address: property.propertyAddress || "",
+            city: property.city || "City",
+            state: property.state || "State",
+            zipCode: property.zipCode || "",
+            propertyType: property.propertyType || "Apartment",
+            apartmentType: property.apartmentType || "",
+            amenities: property.amenities || ["Parking", "Security", "Garden"],
+            images: property.propertyImageURLs || ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
+            yearBuilt: property.yearBuilt || 2020,
+            featured: true
+          }));
+          
+          setFeaturedProperties(formattedProperties);
+        }
+      } catch (error) {
+        console.error('Error fetching featured properties:', error);
+      }
+    };
+
+    fetchFeaturedProperties();
+  }, []);
 
   // Format price as currency
   const formatPrice = (price: number) => {
@@ -84,85 +128,90 @@ export default function FeaturedProperties() {
         </div>
         
         <div className="mt-16 grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {featuredProperties.map((property) => (
-            <div 
-              key={property.id} 
-              className="bg-white rounded-xl overflow-hidden transition duration-300 hover:shadow-2xl group border border-gray-200 hover:border-blue-200"
-            >
-              <div className="relative h-72">
-                <Image 
-                  src={property.images[0]} 
-                  alt={property.title} 
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-                <button
-                  onClick={() => toggleFavorite(property.id)}
-                  className="absolute top-4 right-0 p-2 bg-white/90 rounded-full hover:bg-white transition-colors z-10 shadow-md btn-press-effect"
-                >
-                  <Heart
-                    className={`h-5 w-5 ${
-                      favorites.includes(property.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
-                    }`}
+          {/* Ensure featuredProperties is an array before calling .map() */}
+          {Array.isArray(featuredProperties) ? (
+            featuredProperties.map((property) => (
+              <div 
+                key={property.id} 
+                className="bg-white rounded-xl overflow-hidden transition duration-300 hover:shadow-2xl group border border-gray-200 hover:border-blue-200"
+              >
+                <div className="relative h-72">
+                  <Image 
+                    src={property.images[0] || "/imageforLanding/house.jpg"} 
+                    alt={property.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-700"
                   />
-                </button>
-                {property.featured && (
-                  <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs px-3 py-1.5 rounded-full font-medium z-10 shadow-md flex items-center">
-                    <Shield className="h-3.5 w-3.5 mr-1" />
-                    Verified
+                  <button
+                    onClick={() => toggleFavorite(property.id)}
+                    className="absolute top-4 right-0 p-2 bg-white/90 rounded-full hover:bg-white transition-colors z-10 shadow-md btn-press-effect"
+                  >
+                    <Heart
+                      className={`h-5 w-5 ${
+                        favorites.includes(property.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                      }`}
+                    />
+                  </button>
+                  {property.featured && (
+                    <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs px-3 py-1.5 rounded-full font-medium z-10 shadow-md flex items-center">
+                      <Shield className="h-3.5 w-3.5 mr-1" />
+                      Verified
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                    <p className="text-white font-bold text-2xl">{formatPrice(property.price)}</p>
                   </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                  <p className="text-white font-bold text-2xl">{formatPrice(property.price)}</p>
                 </div>
-              </div>
-              
-              <div className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{property.title}</h3>
-                    <div className="flex items-center mt-1 text-gray-500">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      <p className="text-sm">{property.city}, {property.state}</p>
+                
+                <div className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{property.title}</h3>
+                      <div className="flex items-center mt-1 text-gray-500">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        <p className="text-sm">{property.city}, {property.state}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <p className="text-gray-600 text-sm mt-4 line-clamp-2">{property.description}</p>
-                
-                <div className="flex justify-between text-sm text-gray-600 mt-6 pb-6 border-b border-gray-100">
-                  <div className="flex items-center">
-                    <Bed className="h-4 w-4 mr-1 text-blue-500" />
-                    <span>{property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} Bed${property.bedrooms > 1 ? 's' : ''}`}</span>
+                  
+                  <p className="text-gray-600 text-sm mt-4 line-clamp-2">{property.description}</p>
+                  
+                  <div className="flex justify-between text-sm text-gray-600 mt-6 pb-6 border-b border-gray-100">
+                    <div className="flex items-center">
+                      <Bed className="h-4 w-4 mr-1 text-blue-500" />
+                      <span>{property.bedrooms === 0 ? 'Studio' : `${property.bedrooms} Bed${property.bedrooms > 1 ? 's' : ''}`}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Bath className="h-4 w-4 mr-1 text-blue-500" />
+                      <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Square className="h-4 w-4 mr-1 text-blue-500" />
+                      <span>{property.area} sqft</span>
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <Bath className="h-4 w-4 mr-1 text-blue-500" />
-                    <span>{property.bathrooms} Bath{property.bathrooms > 1 ? 's' : ''}</span>
+                  
+                  <div className="mt-6">
+                    {account ? (
+                      <Link href={`/page/property/${property.id}`} className="block w-full text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium btn-press-effect btn-ripple">
+                        View Details
+                      </Link>
+                    ) : (
+                      <button 
+                        onClick={(e) => handlePropertyClick(e, property.id)}
+                        className="flex w-full text-center px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors items-center justify-center font-medium btn-press-effect btn-ripple"
+                      >
+                        <Lock className="h-4 w-4 mr-2" />
+                        Connect to View
+                      </button>
+                    )}
                   </div>
-                  <div className="flex items-center">
-                    <Square className="h-4 w-4 mr-1 text-blue-500" />
-                    <span>{property.area} sqft</span>
-                  </div>
-                </div>
-                
-                <div className="mt-6">
-                  {account ? (
-                    <Link href={`/page/property/${property.id}`} className="block w-full text-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium btn-press-effect btn-ripple">
-                      View Details
-                    </Link>
-                  ) : (
-                    <button 
-                      onClick={(e) => handlePropertyClick(e, property.id)}
-                      className="flex w-full text-center px-4 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors items-center justify-center font-medium btn-press-effect btn-ripple"
-                    >
-                      <Lock className="h-4 w-4 mr-2" />
-                      Connect to View
-                    </button>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p>No properties available to display.</p>
+          )}
         </div>
         
         <div className="mt-16 text-center">
