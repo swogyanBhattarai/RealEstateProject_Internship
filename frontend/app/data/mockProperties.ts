@@ -17,7 +17,8 @@ export const mockProperties = [
     amenities: ['Swimming Pool', 'Gym', 'Parking', 'Security System'],
     images: ['/imageforLanding/house.jpg', '/imageforLanding/house2.jpg'],
     yearBuilt: 2018,
-    featured: true
+    featured: true,
+    
   },
   {
     id: 2,
@@ -36,7 +37,8 @@ export const mockProperties = [
     amenities: ['Elevator', 'Parking', 'Laundry Room', 'Storage Room'],
     images: ['/imageforLanding/house3.jpg', '/imageforLanding/house4.jpg'],
     yearBuilt: 2015,
-    featured: false
+    featured: false,
+    status: 'pending',
   },
   {
     id: 3,
@@ -74,7 +76,8 @@ export const mockProperties = [
     amenities: ['Air Conditioning', 'Heating', 'Pet Friendly'],
     images: ['/imageforLanding/house2.jpg', '/imageforLanding/house3.jpg'],
     yearBuilt: 1925,
-    featured: false
+    featured: false,
+    status: 'pending'
   },
   {
     id: 5,
@@ -112,6 +115,7 @@ export const mockProperties = [
     amenities: ['Balcony', 'Air Conditioning', 'Heating', 'Pet Friendly', 'Parking'],
     images: ['/imageforLanding/house.jpg', '/imageforLanding/house3.jpg'],
     yearBuilt: 2016,
-    featured: false
+    featured: false,
+    status: 'pending'
   }
 ];
