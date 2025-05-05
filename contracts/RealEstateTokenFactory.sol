@@ -40,7 +40,7 @@ contract RealEstateTokenFactory {
         string memory propertyAddress,
         uint256 valueUSD,
         address originalOwner,
-        string[] memory propertyImageURLs // Added image URL parameter
+        string[] memory propertyImageURLs 
     ) internal {
         uint256 tokenCount = valueUSD / 50; // $50 per token
         string memory name = string(abi.encodePacked("Property ", properties.length.toString()));

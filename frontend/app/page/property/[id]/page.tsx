@@ -30,7 +30,7 @@ export default function PropertyDetails() {
   const [userBalance, setUserBalance] = useState<number>(0);
   const [listings, setListings] = useState<any[]>([]);
   const [listingAmount, setListingAmount] = useState<number>(1);
-  const [listingPrice, setListingPrice] = useState<number>(60); // Default $60 (higher than initial $50)
+  const [listingPrice, setListingPrice] = useState<number>(60); 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
@@ -49,7 +49,7 @@ export default function PropertyDetails() {
     }
   };
   
-  // Fetch property data
+  // Fetch property datas
   useEffect(() => {
     const fetchProperty = async () => {
       console.log("Starting to fetch property with ID:", id);

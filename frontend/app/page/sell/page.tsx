@@ -54,7 +54,7 @@ export default function SellPage() {
 
   // Available amenities for apartments
   const availableAmenities = [
-    'Swimming Pool', 'Gym', 'Elevator', 'Parking', 'Security System',
+    'Swimming Pool', 'Gym', 'Elevator', 'Parking', 'Security System', 'Wifi',
     'Balcony', 'Air Conditioning', 'Heating', 'Laundry Room', 'Storage Room',
     'Pet Friendly', 'Furnished', 'Wheelchair Access', 'Concierge Service'
   ];
@@ -496,7 +496,7 @@ export default function SellPage() {
                   required
                   min="0"
                   step="0.5"
-                  placeholder="e.g. 1.5"
+                  placeholder="e.g. 1"
                   className={`w-full px-4 py-2 border ${touched.bathrooms && errors.bathrooms ? 'border-red-500' : 'border-gray-300'} rounded-lg focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400`}
                 />
                 {renderError('bathrooms')}

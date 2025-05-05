@@ -22,5 +22,6 @@ export interface PropertyResponse {
   propertyAddress: string;
   value: bigint; // or string if you prefer (depending on how you fetch it)
   tokenAddress: string;
+  propertyImageURLs: string[];
 
 }
