@@ -13,6 +13,7 @@ export default function HeroSection() {
     "/imageforLanding/house3.jpg",
     "/imageforLanding/house4.jpg",
     "/imageforLanding/house5.jpg",
+    "/imageforLanding/house7.jpg",
   ];
 
   // Effect for image slideshow
@@ -28,7 +29,7 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <div className="relative h-[600px] md:h-[550px] bg-black">
+    <div className="relative h-[900px] md:h-[750px] bg-black">
       {/* Background Image Slideshow */}
       <div className="absolute inset-0 overflow-hidden">
         {houseImages.map((img, index) => (
@@ -43,7 +44,9 @@ export default function HeroSection() {
               alt={`Luxury home ${index + 1}`}
               fill
               priority={index === 0}
-              className="object-cover scale-[1.02] transform transition-transform duration-10000 animate-slow-zoom"
+              quality={90}
+              sizes="100vw"
+              className="object-cover transform transition-transform duration-10000 animate-slow-zoom"
             />
           </div>
         ))}

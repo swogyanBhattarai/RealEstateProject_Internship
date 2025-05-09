@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useWallet } from './hooks/usewallet';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
 
 export default function Navbar() {
   const { account, connectWallet, disconnectWallet, isConnecting } = useWallet();
@@ -75,6 +75,13 @@ export default function Navbar() {
             </button>
           )}
           
+          {/* Profile link - only visible when wallet is connected */}
+          {account && (
+            <Link href="/page/profile" className={`${scrolled ? 'text-gray-800' : 'text-white'} hover:text-blue-500 transition-colors relative group`}>
+              Profile
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-300 transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+          )}
         </div>
       </div>
       
@@ -164,6 +171,18 @@ export default function Navbar() {
             >
               Sell
             </Link>
+            
+            {/* Add Profile link to mobile menu */}
+            {account && (
+              <Link 
+                href="/page/profile" 
+                className="text-gray-700 hover:text-blue-600 transition-colors flex items-center gap-2 text-lg border-b border-gray-100 pb-3"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <User size={18} />
+                Profile
+              </Link>
+            )}
             
             <div className="mt-4">
               {account ? (

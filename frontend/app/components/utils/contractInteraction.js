@@ -13,7 +13,7 @@ const factoryABI = RealEstateTokenFactoryABI.abi;
 // ABI for PropertyToken contract
 const tokenABI = PropertyTokenABI.abi;
 // Contract address for RealEstateTokenFactory contract
-const FACTORY_CONTRACT_ADDRESS = contractAddress.factoryAddress;
+const FACTORY_CONTRACT_ADDRESS = contractAddress.RealEstateTokenFactory;
 
 // Get contract instance
 export const getFactoryContract = async (needSigner = false) => {
@@ -121,19 +121,35 @@ export const getCurrentUserAddress = async () => {
   return await signer.getAddress();
 };
 
-// List tokens for sale
-export const listTokensForSale = async (
-  propertyId,
-  tokenAmount,
-  pricePerToken
-) => {
+// List tokens for sale from profile page
+export const listTokensForSaleFromProfile = async (propertyId, tokenAmount, pricePerToken) => {
   try {
+    if (!tokenAmount || tokenAmount <= 0) {
+      throw new Error("Token amount must be greater than 0");
+    }
+    
+    if (!pricePerToken || pricePerToken <= 0) {
+      throw new Error("Price per token must be greater than 0");
+    }
+    
     const contract = await getFactoryContract(true);
-    const tx = await contract.listForSale(
-      propertyId,
-      tokenAmount,
-      ethers.parseEther(pricePerToken.toString())
-    );
+    
+    // Convert price to wei (assuming price is in USD)
+    const priceInWei = ethers.parseEther(pricePerToken.toString());
+    
+    // Get token contract to approve transfer
+    const properties = await contract.getProperties();
+    const tokenAddress = properties[3][propertyId]; // Access tokenAddresses from the returned array
+    const tokenContract = await getTokenContract(tokenAddress, true);
+    
+    // Approve the factory contract to transfer tokens
+    const approvalAmount = BigInt(tokenAmount) * BigInt(10 ** 18); // Assuming 18 decimals
+    await tokenContract.approve(FACTORY_CONTRACT_ADDRESS, approvalAmount);
+    
+    // Call the listForSale function
+    const tx = await contract.listForSale(propertyId, tokenAmount, priceInWei);
+    
+    // Wait for transaction to be mined
     return await tx.wait();
   } catch (error) {
     console.error("Error listing tokens for sale:", error);
@@ -251,6 +267,53 @@ export const getFeaturedProperties = async (limit = 3) => {
     return sortedProperties.slice(0, limit);
   } catch (error) {
     console.error("Error fetching featured properties:", error);
+    throw error;
+  }
+};
+
+// Unified function to list tokens for sale from any page
+export const listTokensForSale = async (propertyId, tokenAmount, pricePerToken) => {
+  try {
+    if (!tokenAmount || tokenAmount <= 0) {
+      throw new Error("Token amount must be greater than 0");
+    }
+    
+    if (!pricePerToken || pricePerToken <= 0) {
+      throw new Error("Price per token must be greater than 0");
+    }
+    
+    const contract = await getFactoryContract(true);
+    
+    // Get property details to find token address
+    const properties = await contract.getProperties();
+    if (propertyId >= properties[0].length) {
+      throw new Error("Invalid property ID");
+    }
+    
+    const tokenAddress = properties[2][propertyId]; // Access tokenAddresses from the returned array
+    
+    // Get token contract
+    const tokenContract = await getTokenContract(tokenAddress, true);
+    
+    // Convert price to wei (assuming price is in USD)
+    const priceInWei = ethers.parseEther(pricePerToken.toString());
+    
+    // Get token decimals
+    const decimals = await tokenContract.decimals();
+    
+    // Calculate token amount in smallest units
+    const tokenAmountWithDecimals = BigInt(tokenAmount) * BigInt(10 ** decimals);
+    
+    // Approve the factory contract to transfer tokens
+    await tokenContract.approve(FACTORY_CONTRACT_ADDRESS, tokenAmountWithDecimals);
+    
+    // Call the listForSale function
+    const tx = await contract.listForSale(propertyId, tokenAmount, priceInWei);
+    
+    // Wait for transaction to be mined
+    return await tx.wait();
+  } catch (error) {
+    console.error("Error listing tokens for sale:", error);
     throw error;
   }
 };

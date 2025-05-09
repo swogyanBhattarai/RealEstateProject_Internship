@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/navbar';
 import Footer from '../../components/footer';
 import { useWallet } from '../../components/hooks/usewallet';
+import { useFavorites } from '../../components/hooks/useFavorites';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -14,9 +15,9 @@ import { PropertyResponse } from '../../../types/property';
 
 export default function BuyPage() {
   const { account } = useWallet();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const router = useRouter();
   const [properties, setProperties] = useState<PropertyResponse[]>([]);
-  const [favorites, setFavorites] = useState<number[]>([]);
   const [isWalletChecked, setIsWalletChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,10 +85,9 @@ export default function BuyPage() {
     fetchProperties();
   }, []);
 
-  const toggleFavorite = (id: number) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((favId) => favId !== id) : [...prev, id]
-    );
+  // Handle favorite toggle using the context
+  const handleToggleFavorite = (id: number) => {
+    toggleFavorite(id);
   };
 
   if (!account) return null;
@@ -133,12 +133,12 @@ export default function BuyPage() {
                     <button
                       onClick={(e) => {
                         e.preventDefault();
-                        toggleFavorite(index);
+                        handleToggleFavorite(index);
                       }}
-                      className="absolute top-4 right-4 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors z-10"
+                      className="absolute top-4 right-1 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors z-10"
                     >
                       <Heart
-                        className={`h-5 w-5 ${favorites.includes(index)
+                        className={`h-6 w-6 ${isFavorite(index)
                           ? 'fill-red-500 text-red-500'
                           : 'text-white'
                           }`}

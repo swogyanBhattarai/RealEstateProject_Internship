@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield } from 'lucide-react';
+import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield, Star, ArrowRight } from 'lucide-react';
 import { useWallet } from '../hooks/usewallet';
+import { useFavorites } from '../hooks/useFavorites';
 import { useRouter } from 'next/navigation';
 import { ethers } from 'ethers';
 import RealEstateTokenFactoryABI from '../../../contracts/RealEstateTokenFactoryABI.json';
@@ -31,7 +32,7 @@ interface Property {
 
 export default function FeaturedProperties() {
   const { account, connectWallet, isConnecting } = useWallet();
-  const [favorites, setFavorites] = useState<number[]>([]);
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
   const router = useRouter();
 
@@ -48,26 +49,42 @@ export default function FeaturedProperties() {
             provider
           );
 
-          const properties = await contract.getProperties();
+          const [
+            propertyAddresses, 
+            values, 
+            tokenAddresses, 
+            propertyImageURLs
+          ] = await contract.getProperties();
           
-          // Format the properties data
-          const formattedProperties = properties.slice(0, 3).map((property: any, index: number) => ({
+          // Make sure we have at least 3 properties to display
+          const propertyCount = Math.min(3, propertyAddresses ? propertyAddresses.length : 0);
+          
+          if (propertyCount === 0) {
+            setFeaturedProperties([]);
+            return;
+          }
+          
+          // Format the properties data - take up to 3 properties
+          const formattedProperties = Array.from({ length: propertyCount }).map((_, index) => ({
             id: index,
-            title: property.propertyAddress || `Property ${index + 1}`,
-            description: property.description || "A beautiful property available for investment",
-            price: Number(property.value) / 1e18,
-            bedrooms: property.bedrooms || 3,
-            bathrooms: property.bathrooms || 2,
-            area: property.area || 1500,
-            address: property.propertyAddress || "",
-            city: property.city || "City",
-            state: property.state || "State",
-            zipCode: property.zipCode || "",
-            propertyType: property.propertyType || "Apartment",
-            apartmentType: property.apartmentType || "",
-            amenities: property.amenities || ["Parking", "Security", "Garden"],
-            images: property.propertyImageURLs || ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
-            yearBuilt: property.yearBuilt || 2020,
+            title: propertyAddresses[index] || `Property ${index + 1}`,
+            description: "A beautiful property available for investment through blockchain technology.",
+            price: Number(ethers.formatUnits(values[index], 18)),
+            bedrooms: 3,
+            bathrooms: 2,
+            area: 1500,
+            address: propertyAddresses[index] || "",
+            city: "City",
+            state: "State",
+            zipCode: "",
+            propertyType: "Apartment",
+            apartmentType: "",
+            amenities: ["Parking", "Security", "Garden"],
+            images: propertyImageURLs[index]?.length > 0 
+              ? propertyImageURLs[index].map((img: string) => 
+                  img.startsWith('http') ? img : `https://gateway.pinata.cloud/ipfs/${img}`)
+              : ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
+            yearBuilt: 2020,
             featured: true
           }));
           
@@ -90,20 +107,6 @@ export default function FeaturedProperties() {
     }).format(price);
   };
 
-  // Toggle favorite status
-  const toggleFavorite = (id: number) => {
-    if (!account) {
-      alert('Please connect your wallet to save favorites');
-      return;
-    }
-    
-    setFavorites(prev => 
-      prev.includes(id) 
-        ? prev.filter(favId => favId !== id) 
-        : [...prev, id]
-    );
-  };
-
   // Handle property click - redirect to details or prompt wallet connection
   const handlePropertyClick = (e: React.MouseEvent, propertyId: number) => {
     e.preventDefault();
@@ -116,11 +119,15 @@ export default function FeaturedProperties() {
   };
 
   return (
-    <div className="py- bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-24 bg-gradient-to-b from-blue-50 to-white relative overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-blue-100 rounded-full filter blur-3xl opacity-30 -mt-24 -mr-24"></div>
+      <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-blue-100 rounded-full filter blur-3xl opacity-30 -mb-24 -ml-24"></div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center">
-          <span className="text-blue-600 font-semibold text-sm uppercase tracking-wider">Exclusive Selection</span>
-          <h2 className="mt-2 text-4xl font-bold text-gray-900">Featured Properties</h2>
+          <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">Exclusive Selection</span>
+          <h2 className="mt-3 text-4xl font-bold text-gray-900">Featured Properties</h2>
           <div className="w-24 h-1 bg-blue-500 mx-auto my-6"></div>
           <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto">
             Explore our handpicked selection of premium properties, each verified and secured with blockchain technology
@@ -129,26 +136,31 @@ export default function FeaturedProperties() {
         
         <div className="mt-16 grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {/* Ensure featuredProperties is an array before calling .map() */}
-          {Array.isArray(featuredProperties) ? (
+          {Array.isArray(featuredProperties) && featuredProperties.length > 0 ? (
             featuredProperties.map((property) => (
               <div 
                 key={property.id} 
-                className="bg-white rounded-xl overflow-hidden transition duration-300 hover:shadow-2xl group border border-gray-200 hover:border-blue-200"
+                className="group bg-white rounded-2xl overflow-hidden transition-all duration-500 hover:shadow-2xl border border-gray-200 hover:border-blue-300 transform hover:-translate-y-2"
               >
                 <div className="relative h-72">
                   <Image 
                     src={property.images[0] || "/imageforLanding/house.jpg"} 
                     alt={property.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
                   <button
-                    onClick={() => toggleFavorite(property.id)}
-                    className="absolute top-4 right-0 p-2 bg-white/90 rounded-full hover:bg-white transition-colors z-10 shadow-md btn-press-effect"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(property.id);
+                    }}
+                    className="absolute top-4  p-3 bg-white/90 rounded-full hover:bg-white transition-colors z-10 shadow-md btn-press-effect"
                   >
                     <Heart
                       className={`h-5 w-5 ${
-                        favorites.includes(property.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
+                        isFavorite(property.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'
                       }`}
                     />
                   </button>
