@@ -56,7 +56,7 @@ contract RealEstateTokenFactory {
         string memory symbol = string(abi.encodePacked("PROP", properties.length.toString()));
 
         PropertyToken token = new PropertyToken(name, symbol, tokenCount, originalOwner);
-        properties.push(Property(propertyAddress, valueUSD, address(token)));
+        properties.push(Property(propertyAddress, valueUSD, address(token), new string[](0)));
     }
 
     function disapproveProperty(uint256 pendingIndex) public {

@@ -7,34 +7,6 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "propertyAddress",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "valueUSD",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "originalOwner",
-        "type": "address"
-      },
-      {
-        "internalType": "string[]",
-        "name": "propertyImageURLs",
-        "type": "string[]"
-      }
-    ],
-    "name": "addProperty",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "propertyId",
         "type": "uint256"
@@ -66,6 +38,19 @@
     "name": "buyFromSale",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "pendingIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "disapproveProperty",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -149,6 +134,46 @@
   },
   {
     "inputs": [],
+    "name": "getPendingProperties",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "propertyAddress",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "originalOwner",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "approved",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "exists",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct RealEstateTokenFactory.PendingProperty[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getProperties",
     "outputs": [
       {
@@ -206,6 +231,45 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "pendingProperties",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "propertyAddress",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "originalOwner",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "approved",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "exists",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
