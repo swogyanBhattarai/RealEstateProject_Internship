@@ -805,7 +805,7 @@ export default function SellPage() {
               <Check className="text-green-500 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <h3 className="text-green-800 font-medium">Apartment Listed Successfully!</h3>
-                {/* <p className="text-green-700 mt-1">Your apartment has been submitted for review. We will notify you once it live.</p> */}
+              
               </div>
             </div>
           )}
