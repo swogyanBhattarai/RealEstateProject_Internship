@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 import { ethers, artifacts } from "hardhat";
 import fs from "fs";
+=======
+const { ethers, artifacts } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
+>>>>>>> origin/admin
 
 async function main() {
   // Get the deployer's address
@@ -14,7 +20,12 @@ async function main() {
   console.log("RealEstateTokenFactory deployed to:", await realEstateTokenFactory.getAddress());
 
   // Save contract address and ABI for frontend use
+<<<<<<< HEAD
   const contractsDir = __dirname + "/../frontend/contracts";
+=======
+  const contractsDir = path.join(__dirname, "../frontend/contracts");
+
+>>>>>>> origin/admin
 
   if (!fs.existsSync(contractsDir)) {
     fs.mkdirSync(contractsDir, { recursive: true });
@@ -52,4 +63,8 @@ main()
   .catch((error) => {
     console.error(error);
     process.exit(1);
+<<<<<<< HEAD
   });
+=======
+  });
+>>>>>>> origin/admin

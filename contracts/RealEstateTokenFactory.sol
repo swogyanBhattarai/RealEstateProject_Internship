@@ -11,8 +11,7 @@ contract RealEstateTokenFactory {
         string propertyAddress;
         uint256 value;
         address tokenAddress;
-        string[]  propertyImageURLs;
-        
+        string[] propertyImageURLs;
     }
 
     struct Listing {
@@ -25,6 +24,7 @@ contract RealEstateTokenFactory {
         string propertyAddress;
         uint256 value;
         address originalOwner;
+        string[] propertyImageURLs;
         bool approved;
         bool exists;
     }
@@ -49,14 +49,71 @@ contract RealEstateTokenFactory {
     function submitPropertyForApproval(
         string memory propertyAddress,
         uint256 valueUSD,
-        address originalOwner
+        address originalOwner,
+        string[] memory propertyImageURLs // Added image URL parameter
     ) internal {
         uint256 tokenCount = valueUSD / 50; // $50 per token
         string memory name = string(abi.encodePacked("Property ", properties.length.toString()));
         string memory symbol = string(abi.encodePacked("PROP", properties.length.toString()));
 
         PropertyToken token = new PropertyToken(name, symbol, tokenCount, originalOwner);
-        properties.push(Property(propertyAddress, valueUSD, address(token), new string[](0)));
+        properties.push(Property(propertyAddress, valueUSD, address(token), propertyImageURLs)); // Store image URL
+    }
+
+    function addProperty(
+        string memory propertyAddress,
+        uint256 valueUSD,
+        address originalOwner,
+        string[] memory propertyImageURLs // Added image URL parameter
+    ) external {
+        require(propertyImageURLs.length <= 5, "Only 5 image are allowed.");
+        tokenizeProperty(propertyAddress, valueUSD, originalOwner, propertyImageURLs);
+=========
+        uint256 valueUSD
+    ) public {
+        pendingProperties.push(
+            PendingProperty({
+                propertyAddress: propertyAddress,
+                value: valueUSD,
+                originalOwner: msg.sender,
+                approved: false,
+                exists: true
+            })
+        );
+>>>>>>>>> Temporary merge branch 2
+    }
+
+    function approveAndTokenizeProperty(uint256 pendingIndex) public {
+        require(msg.sender == owner, "Only admin can approve");
+        require(pendingIndex < pendingProperties.length, "Invalid index");
+
+        PendingProperty storage pending = pendingProperties[pendingIndex];
+        require(
+            pending.exists && !pending.approved,
+            "Already handled or invalid"
+        );
+
+        // Tokenization
+        uint256 tokenCount = pending.value / 50;
+        string memory name = string(
+            abi.encodePacked("Property ", properties.length.toString())
+        );
+        string memory symbol = string(
+            abi.encodePacked("PROP", properties.length.toString())
+        );
+
+        PropertyToken token = new PropertyToken(
+            name,
+            symbol,
+            tokenCount,
+            pending.originalOwner
+        );
+        properties.push(
+            Property(pending.propertyAddress, pending.value, address(token))
+        );
+
+        pending.approved = true;
+        pending.exists = false;
     }
 
     function disapproveProperty(uint256 pendingIndex) public {
@@ -145,12 +202,16 @@ contract RealEstateTokenFactory {
 
     // --- Getters ---
 
-    function getProperties() external view returns (
-        string[] memory propertyAddresses,
-        uint256[] memory values,
-        address[] memory tokenAddresses,
-        string[][] memory propertyImageURLs
-    ) {
+    function getProperties()
+        external
+        view
+        returns (
+            string[] memory propertyAddresses,
+            uint256[] memory values,
+            address[] memory tokenAddresses,
+            string[][] memory propertyImageURLs
+        )
+    {
         uint256 propertyCount = properties.length;
         propertyAddresses = new string[](propertyCount);
         values = new uint256[](propertyCount);
