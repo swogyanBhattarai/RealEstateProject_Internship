@@ -144,17 +144,19 @@ export default function PropertyBuy({ propertyId }: PropertyBuyProps) {
       // Get the factory contract
       const factoryContract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
-        RealEstateTokenFactoryABI, // Remove .abi since the ABI is already the array
+        RealEstateTokenFactoryABI,
         signer
       );
 
       const ethRate = 2000; // 1 ETH = $2000
       const ethCost = totalValue / ethRate;
-      // Fix ethers.utils issue
-      const ethCostWei = ethers.parseEther(ethCost.toFixed(18));
+      
+      // Add a 10% buffer to ensure enough ETH is sent
+      const ethCostWithBuffer = ethCost * 1.1;
+      const ethCostWei = ethers.parseEther(ethCostWithBuffer.toFixed(18));
 
-      // Call the buyTokens function
-      const tx = await factoryContract.buyTokens(propertyId, tokenAmount, {
+      // Call the buyFromSale function instead of buyTokens
+      const tx = await factoryContract.buyFromSale(propertyId, tokenAmount, {
         value: ethCostWei,
       });
 

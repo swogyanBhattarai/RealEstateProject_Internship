@@ -145,6 +145,9 @@ export default function PropertySell({ propertyId }: PropertySellProps) {
       setSuccess(true);
       setTokenAmount(1);
       setPricePerToken(50);
+      
+      // Explicitly return to prevent any further execution
+      return;
     } catch (err: Error | unknown) {
       console.error("Error listing tokens for sale:", err);
       setError(err instanceof Error ? err.message : "Failed to list tokens for sale. Please try again.");

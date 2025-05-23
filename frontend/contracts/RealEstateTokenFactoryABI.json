@@ -7,27 +7,12 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "propertyAddress",
-        "type": "string"
-      },
-      {
         "internalType": "uint256",
-        "name": "valueUSD",
+        "name": "pendingIndex",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "originalOwner",
-        "type": "address"
-      },
-      {
-        "internalType": "string[]",
-        "name": "propertyImageURLs",
-        "type": "string[]"
       }
     ],
-    "name": "addProperty",
+    "name": "approveAndTokenizeProperty",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -35,8 +20,6 @@
   {
     "inputs": [
       {
-=======
->>>>>>> origin/admin
         "internalType": "uint256",
         "name": "propertyId",
         "type": "uint256"
@@ -184,6 +167,11 @@
             "type": "address"
           },
           {
+            "internalType": "string[]",
+            "name": "propertyImageURLs",
+            "type": "string[]"
+          },
+          {
             "internalType": "bool",
             "name": "approved",
             "type": "bool"
@@ -207,7 +195,6 @@
     "name": "getProperties",
     "outputs": [
       {
-<<<<<<< HEAD
         "internalType": "string[]",
         "name": "propertyAddresses",
         "type": "string[]"
@@ -226,28 +213,6 @@
         "internalType": "string[][]",
         "name": "propertyImageURLs",
         "type": "string[][]"
-=======
-        "components": [
-          {
-            "internalType": "string",
-            "name": "propertyAddress",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "value",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "tokenAddress",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct RealEstateTokenFactory.Property[]",
-        "name": "",
-        "type": "tuple[]"
->>>>>>> origin/admin
       }
     ],
     "stateMutability": "view",
@@ -355,6 +320,29 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "propertyAddress",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "valueUSD",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_propertyImageURLs",
+        "type": "string[]"
+      }
+    ],
+    "name": "submitPropertyForApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]

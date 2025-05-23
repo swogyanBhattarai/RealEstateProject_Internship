@@ -82,9 +82,19 @@ export default function PropertyListings({ propertyId }: PropertyListingsProps) 
         signer
       );
       
-            const ethRate = 2000; // 1 ETH = $2000
+      const ethRate = 2000; // 1 ETH = $2000
       const ethCost = totalCost / ethRate;
-      const ethCostWei = parseEther(ethCost.toFixed(18));
+      
+      // Fix: Round to a reasonable number of decimals (6 is usually safe)
+      // and add a small buffer (5%) to ensure enough ETH is sent
+      const safeEthCost = Math.ceil(ethCost * 1.05 * 1000000) / 1000000;
+      
+      // Convert to wei with proper formatting
+      const ethCostWei = parseEther(safeEthCost.toString());
+      
+      console.log(`Buying from listing #${listingIndex}`);
+      console.log(`Total cost: $${totalCost} (${safeEthCost} ETH)`);
+      console.log(`Sending value: ${ethCostWei.toString()} wei`);
       
       // Call the buyFromListing function
       const tx = await contract.buyFromListing(propertyId, listingIndex, {
