@@ -257,13 +257,13 @@ export default function ProfilePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-gray-800 rounded-xl overflow-hidden mb-8">
             <div className="p-8 flex flex-col md:flex-row items-center md:items-start gap-6">
-              <div className="bg-blue-600 rounded-full p-6 flex items-center justify-center">
+              <div className="bg-black rounded-full p-6 flex items-center justify-center">
                 <Image 
                   src="/logo2.png" 
                   alt="Profile" 
                   width={80} 
                   height={80} 
-                  className="rounded-full"
+                  className="rounded-full w-20 h-20 "
                 />
               </div>
               

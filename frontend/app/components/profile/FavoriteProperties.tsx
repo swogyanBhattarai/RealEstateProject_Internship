@@ -101,7 +101,9 @@ export default function FavoriteProperties() {
               <Image 
                 src={property.imageURL.startsWith('http') 
                   ? property.imageURL 
-                  : `https://gateway.pinata.cloud/ipfs/${property.imageURL}`} 
+                  : property.imageURL.startsWith('Qm') || property.imageURL.startsWith('baf')
+                    ? `https://gateway.pinata.cloud/ipfs/${property.imageURL}`
+                    : property.imageURL} 
                 alt={property.address} 
                 fill 
                 className="object-cover"

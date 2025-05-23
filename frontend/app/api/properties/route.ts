@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     let result = allProperties;
     if (featured) {
       result = allProperties
-        .sort((a: { value: string }, b: { value: string }) => parseInt(b.value) - parseInt(a.value))
+        .sort((a: any, b: any) => parseInt(b.value) - parseInt(a.value))
         .slice(0, limit);
     } else if (limit) {
       result = allProperties.slice(0, limit);

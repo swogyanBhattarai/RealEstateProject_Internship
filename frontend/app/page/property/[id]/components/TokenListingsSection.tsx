@@ -112,8 +112,7 @@ const TokenListingsSection: React.FC<TokenListingsSectionProps> = ({
                     Seller: {listing.seller === account ? 'You' : listing.seller}
                   </p>
                   
-                  // Inside the component's return statement, update the Buy Tokens button
-                  {listing.seller === account ? (
+                                {listing.seller === account ? (
                     <button
                       onClick={() => cancelListing(index)}
                       disabled={isProcessing}

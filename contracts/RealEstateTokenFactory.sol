@@ -49,27 +49,7 @@ contract RealEstateTokenFactory {
     function submitPropertyForApproval(
         string memory propertyAddress,
         uint256 valueUSD,
-        address originalOwner,
-        string[] memory propertyImageURLs // Added image URL parameter
-    ) internal {
-        uint256 tokenCount = valueUSD / 50; // $50 per token
-        string memory name = string(abi.encodePacked("Property ", properties.length.toString()));
-        string memory symbol = string(abi.encodePacked("PROP", properties.length.toString()));
-
-        PropertyToken token = new PropertyToken(name, symbol, tokenCount, originalOwner);
-        properties.push(Property(propertyAddress, valueUSD, address(token), propertyImageURLs)); // Store image URL
-    }
-
-    function addProperty(
-        string memory propertyAddress,
-        uint256 valueUSD,
-        address originalOwner,
-        string[] memory propertyImageURLs // Added image URL parameter
-    ) external {
-        require(propertyImageURLs.length <= 5, "Only 5 image are allowed.");
-        tokenizeProperty(propertyAddress, valueUSD, originalOwner, propertyImageURLs);
-=========
-        uint256 valueUSD
+        string[] memory _propertyImageURLs
     ) public {
         pendingProperties.push(
             PendingProperty({
@@ -77,10 +57,10 @@ contract RealEstateTokenFactory {
                 value: valueUSD,
                 originalOwner: msg.sender,
                 approved: false,
-                exists: true
+                exists: true,
+                propertyImageURLs: _propertyImageURLs
             })
         );
->>>>>>>>> Temporary merge branch 2
     }
 
     function approveAndTokenizeProperty(uint256 pendingIndex) public {
@@ -109,7 +89,12 @@ contract RealEstateTokenFactory {
             pending.originalOwner
         );
         properties.push(
-            Property(pending.propertyAddress, pending.value, address(token))
+            Property(
+                pending.propertyAddress,
+                pending.value,
+                address(token),
+                pending.propertyImageURLs
+            )
         );
 
         pending.approved = true;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Wallet, Info, AlertCircle, Check } from 'lucide-react';
+import { DollarSign, Wallet, Info, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import RealEstateTokenFactoryABI from '../../../../../contracts/RealEstateTokenFactoryABI.json';
 import contractAddress from '../../../../../contracts/contract-address.json';
@@ -23,55 +23,106 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState<boolean>(false);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [ethPrice, setEthPrice] = useState<number>(2000); // Default ETH price in USD
+  const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(false);
   
   // Calculate token price based on property value and total tokens
-  const tokenPrice = property ? property.price : 50; // Default $50 per token
-  const totalTokens = property ? Math.floor(property.price / 50) : 0;
+  const tokenPrice = property ? property.price / 10 : 50; // Default $50 per token
+  const totalTokens = property ? Math.floor(property.price / tokenPrice) : 0;
   
-  // Fetch user's token balance
+  // Fetch ETH price
   useEffect(() => {
-    const fetchUserBalance = async () => {
-      if (!account || !property || propertyId === undefined) return;
-      
+    const fetchEthPrice = async () => {
       try {
-        const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
-        if (!provider) return;
-        
-        // First check if the user has tokens from initial purchase
-        const contract = new ethers.Contract(
-          contractAddress.RealEstateTokenFactory,
-          RealEstateTokenFactoryABI,
-          provider
-        );
-        
-        const buyerInfo = await contract.getBuyerInfo(propertyId, account);
-        let balance = Number(buyerInfo);
-        
-        // Then check token balance from the token contract
-        if (property.tokenAddress) {
-          const tokenContract = new ethers.Contract(
-            property.tokenAddress,
-            PropertyTokenABI,
-            provider
-          );
-          
-          const tokenBalance = await tokenContract.balanceOf(account);
-          const decimals = await tokenContract.decimals();
-          const formattedBalance = Number(ethers.formatUnits(tokenBalance, decimals));
-          
-          // Use the higher of the two balances
-          balance = Math.max(balance, formattedBalance);
+        // Attempt to fetch from CoinGecko
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
         }
         
-        setUserBalance(balance);
+        const data = await response.json();
+        if (data && data.ethereum && data.ethereum.usd) {
+          setEthPrice(data.ethereum.usd);
+          console.log("Successfully fetched ETH price:", data.ethereum.usd);
+        } else {
+          throw new Error("Invalid response format from CoinGecko API");
+        }
       } catch (err) {
-        console.error("Error fetching user balance:", err);
+        console.error("Error fetching ETH price from CoinGecko:", err); // First error you see
+        // Fallback attempt (e.g., to Binance, as indicated by your console logs)
+        try {
+          const fallbackResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'); // Example fallback
+          if (!fallbackResponse.ok) {
+            throw new Error(`Fallback API responded with status: ${fallbackResponse.status}`);
+          }
+          
+          const fallbackData = await fallbackResponse.json();
+          if (fallbackData && fallbackData.price) {
+            const price = parseFloat(fallbackData.price);
+            setEthPrice(price);
+            console.log("Successfully fetched ETH price from fallback:", price);
+          } else {
+            throw new Error("Invalid response format from fallback API");
+          }
+        } catch (fallbackErr) {
+          console.error("Error fetching ETH price from fallback:", fallbackErr); // Second error if fallback also fails
+          console.log("Using default ETH price: 2000"); // Application uses a default
+          // The ethPrice state likely defaults to 2000 or is set here
+        }
       }
     };
     
+    fetchEthPrice();
+  }, []);
+  
+  // Fetch user's token balance
+  const fetchUserBalance = async () => {
+    if (!account || !property || propertyId === undefined) return;
+    
+    setIsLoadingBalance(true);
+    
+    try {
+      const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
+      if (!provider) return;
+      
+      // First check if the user has tokens from initial purchase
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        provider
+      );
+      
+      const buyerInfo = await contract.getBuyerInfo(propertyId, account);
+      let balance = Number(buyerInfo);
+      
+      // Then check token balance from the token contract
+      if (property.tokenAddress) {
+        const tokenContract = new ethers.Contract(
+          property.tokenAddress,
+          PropertyTokenABI,
+          provider
+        );
+        
+        const tokenBalance = await tokenContract.balanceOf(account);
+        const decimals = await tokenContract.decimals();
+        const formattedBalance = Number(ethers.formatUnits(tokenBalance, decimals));
+        
+        // Use the higher of the two balances
+        balance = Math.max(balance, formattedBalance);
+      }
+      
+      setUserBalance(balance);
+    } catch (err) {
+      console.error("Error fetching user balance:", err);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchUserBalance();
   }, [account, property, propertyId, transactionHash]);
   
@@ -95,7 +146,16 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       // Calculate cost in ETH (wei)
       const totalCostUSD = tokenAmount * tokenPrice;
       const costInEth = totalCostUSD / ethPrice;
-      const totalCost = ethers.parseEther(costInEth.toString());
+      
+      // Add a much larger buffer to ensure enough ETH is sent (30% more)
+      const costInEthWithBuffer = costInEth * 1.3;
+      
+      // Convert to wei with more precision
+      const totalCost = ethers.parseEther(costInEthWithBuffer.toString());
+      
+      console.log(`Buying ${tokenAmount} tokens for property #${propertyId}`);
+      console.log(`Total cost: $${totalCostUSD} (${costInEthWithBuffer} ETH)`);
+      console.log(`Sending value: ${totalCost.toString()} wei`);
       
       // Call the buyFromSale function with the correct parameters
       const tx = await contract.buyFromSale(
@@ -106,6 +166,7 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       
       // Wait for transaction to be mined
       const receipt = await tx.wait();
+
       setTransactionHash(receipt.hash);
       
       // Update user balance after successful purchase
@@ -164,7 +225,20 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
               </label>
               <div className="text-sm text-gray-400 flex items-center gap-1">
                 <Wallet size={16} />
-                <span>Your Balance: {userBalance} tokens</span>
+                <span>
+                  Your Balance: {isLoadingBalance ? (
+                    <RefreshCw size={14} className="inline animate-spin ml-1" />
+                  ) : (
+                    `${userBalance} tokens`
+                  )}
+                </span>
+                <button 
+                  onClick={fetchUserBalance}
+                  className="ml-1 text-blue-400 hover:text-blue-300"
+                  disabled={isLoadingBalance}
+                >
+                  <RefreshCw size={14} className={isLoadingBalance ? "animate-spin" : ""} />
+                </button>
               </div>
             </div>
             <div className="flex gap-2">
@@ -189,6 +263,12 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
               >
                 10
               </button>
+              <button
+                onClick={() => setTokenAmount(Math.min(totalTokens, 100))}
+                className="px-3 py-2 bg-gray-700 rounded-md text-sm text-gray-300 hover:bg-gray-600"
+              >
+                Max
+              </button>
             </div>
           </div>
           
@@ -206,19 +286,43 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           </div>
           
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-800/50 rounded-md text-sm text-red-300">
-              {error}
+            <div className="mb-4 p-3 bg-red-900/20 border border-red-800/50 rounded-md text-sm flex items-start gap-2">
+              <AlertCircle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+              <p className="text-red-300">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="mb-4 p-3 bg-green-900/20 border border-green-800/50 rounded-md text-sm flex items-start gap-2">
+              <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+              <p className="text-green-300">{success}</p>
             </div>
           )}
           
           {transactionHash && (
-            <div className="mb-4 p-3 bg-green-900/20 border border-green-800/50 rounded-md text-sm flex items-start gap-2">
-              <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-green-300 font-medium">Purchase successful!</p>
-                <p className="text-gray-400 text-xs mt-1 break-all">
-                  Transaction: {transactionHash}
-                </p>
+            <div className="mb-4 p-3 bg-gray-800 rounded-md text-xs flex items-start gap-2">
+              <div className="w-full">
+                <p className="text-gray-400 mb-1">Transaction Hash:</p>
+                <div className="flex items-center justify-between">
+                  <code className="text-blue-300 break-all">{transactionHash}</code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(transactionHash);
+                      alert("Transaction hash copied to clipboard!");
+                    }}
+                    className="ml-2 text-gray-400 hover:text-white"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <a
+                  href={`https://etherscan.io/tx/${transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 mt-2 inline-block"
+                >
+                  View on Etherscan
+                </a>
               </div>
             </div>
           )}
@@ -232,7 +336,14 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
                 : 'bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900'
             }`}
           >
-            {isProcessing ? 'Processing...' : `Buy ${tokenAmount} Tokens`}
+            {isProcessing ? (
+              <span className="flex items-center justify-center">
+                <RefreshCw size={18} className="animate-spin mr-2" />
+                Processing Transaction...
+              </span>
+            ) : (
+              `Buy ${tokenAmount} Tokens for $${(tokenAmount * tokenPrice).toFixed(2)}`
+            )}
           </button>
           
           <div className="mt-3 text-xs text-gray-400 flex items-start gap-2">
