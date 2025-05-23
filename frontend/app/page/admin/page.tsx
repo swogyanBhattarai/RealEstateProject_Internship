@@ -1,5 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+<<<<<<< HEAD
+=======
+import { ethers } from 'ethers';
+>>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Navbar from '../../components/navbar';
@@ -65,7 +69,14 @@ export default function AdminPage() {
       await approveProperty(id);
       setSuccess(`Property #${id} has been approved successfully`);
 
+<<<<<<< HEAD
      
+=======
+      // Refresh the page after a short delay to show updated state
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 2000); // Remove or comment out this line
+>>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
     } catch (err: any) {
       console.error('Error approving property:', err);
       setError(err.message || 'Failed to approve property');
@@ -85,7 +96,14 @@ export default function AdminPage() {
       await rejectProperty(id);
       setSuccess(`Property #${id} has been rejected`);
 
+<<<<<<< HEAD
       
+=======
+      // Refresh the page after a short delay to show updated state
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 2000); // Remove or comment out this line
+>>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
     } catch (err: any) {
       console.error('Error rejecting property:', err);
       setError(err.message || 'Failed to reject property');

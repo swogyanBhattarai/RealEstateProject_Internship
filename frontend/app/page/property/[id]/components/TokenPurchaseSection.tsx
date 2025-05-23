@@ -37,6 +37,7 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
   useEffect(() => {
     const fetchEthPrice = async () => {
       try {
+<<<<<<< HEAD
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
         const data = await response.json();
         if (data && data.ethereum && data.ethereum.usd) {
@@ -45,6 +46,43 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       } catch (err) {
         console.error("Error fetching ETH price:", err);
         // Keep default price if fetch fails
+=======
+        // Attempt to fetch from CoinGecko
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data && data.ethereum && data.ethereum.usd) {
+          setEthPrice(data.ethereum.usd);
+          console.log("Successfully fetched ETH price:", data.ethereum.usd);
+        } else {
+          throw new Error("Invalid response format from CoinGecko API");
+        }
+      } catch (err) {
+        console.error("Error fetching ETH price from CoinGecko:", err); // First error you see
+        // Fallback attempt (e.g., to Binance, as indicated by your console logs)
+        try {
+          const fallbackResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'); // Example fallback
+          if (!fallbackResponse.ok) {
+            throw new Error(`Fallback API responded with status: ${fallbackResponse.status}`);
+          }
+          
+          const fallbackData = await fallbackResponse.json();
+          if (fallbackData && fallbackData.price) {
+            const price = parseFloat(fallbackData.price);
+            setEthPrice(price);
+            console.log("Successfully fetched ETH price from fallback:", price);
+          } else {
+            throw new Error("Invalid response format from fallback API");
+          }
+        } catch (fallbackErr) {
+          console.error("Error fetching ETH price from fallback:", fallbackErr); // Second error if fallback also fails
+          console.log("Using default ETH price: 2000"); // Application uses a default
+          // The ethPrice state likely defaults to 2000 or is set here
+        }
+>>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       }
     };
     
@@ -120,11 +158,19 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       const totalCostUSD = tokenAmount * tokenPrice;
       const costInEth = totalCostUSD / ethPrice;
       
+<<<<<<< HEAD
       // Add a buffer to ensure enough ETH is sent (10% more)
       const costInEthWithBuffer = costInEth * 1.1;
       
       // Convert to wei with more precision
       const totalCost = ethers.parseEther(costInEthWithBuffer.toFixed(18));
+=======
+      // Add a much larger buffer to ensure enough ETH is sent (30% more)
+      const costInEthWithBuffer = costInEth * 1.3;
+      
+      // Convert to wei with more precision
+      const totalCost = ethers.parseEther(costInEthWithBuffer.toString());
+>>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       
       console.log(`Buying ${tokenAmount} tokens for property #${propertyId}`);
       console.log(`Total cost: $${totalCostUSD} (${costInEthWithBuffer} ETH)`);
@@ -139,6 +185,7 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       
       // Wait for transaction to be mined
       const receipt = await tx.wait();
+
       setTransactionHash(receipt.hash);
       
       // Update user balance after successful purchase
