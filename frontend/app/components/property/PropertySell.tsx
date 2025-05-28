@@ -42,13 +42,12 @@ export default function PropertySell({ propertyId }: PropertySellProps) {
         );
         
         // Get the property details to find the token address
-        const properties = await factoryContract.getProperties();
+        const [propertyAddresses, values, tokenAddresses, propertyImageURLs] = await factoryContract.getProperties();
+        const propertyTokenAddress = tokenAddresses[propertyId];
         
-        if (propertyId >= properties.length) {
+        if (propertyId >= propertyAddresses.length) {
           throw new Error("Property not found");
         }
-        
-        const propertyTokenAddress = properties[propertyId].tokenAddress;
         
         // Get the token contract
         const tokenContract = new ethers.Contract(
@@ -112,7 +111,7 @@ export default function PropertySell({ propertyId }: PropertySellProps) {
       
       // Get the property details to find the token address
       const properties = await factoryContract.getProperties();
-      const propertyTokenAddress = properties[propertyId].tokenAddress;
+      const propertyTokenAddress = properties[3][propertyId]; // Using index 3 for tokenAddresses
       
       // Get the token contract
       const tokenContract = new ethers.Contract(

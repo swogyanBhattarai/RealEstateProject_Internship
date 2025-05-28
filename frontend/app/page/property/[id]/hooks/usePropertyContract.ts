@@ -1,18 +1,9 @@
-<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import RealEstateTokenFactoryABI from '../../../../../contracts/RealEstateTokenFactoryABI.json';
 import PropertyTokenABI from '../../../../../contracts/PropertyTokenABI.json';
 import contractAddress from '../../../../../contracts/contract-address.json';
 import { formatImageUrl} from '../../../../components/utils/imageUtils';
-=======
-import { useState, useEffect } from "react";
-import { ethers } from "ethers";
-import RealEstateTokenFactoryABI from "../../../../../contracts/RealEstateTokenFactoryABI.json";
-import PropertyTokenABI from "../../../../../contracts/PropertyTokenABI.json";
-import contractAddress from "../../../../../contracts/contract-address.json";
-import { formatImageUrl } from "../../../../components/utils/imageUtils";
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
 
 export const usePropertyContract = (propertyId: number) => {
   const [account, setAccount] = useState<string>("");
@@ -20,22 +11,17 @@ export const usePropertyContract = (propertyId: number) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [listings, setListings] = useState<any[]>([]);
-<<<<<<< HEAD
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
-=======
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
   const [tokenAmount, setTokenAmount] = useState<number>(1);
   const [listingAmount, setListingAmount] = useState<number>(1);
   const [listingPrice, setListingPrice] = useState<number>(60);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-<<<<<<< HEAD
+  // Add missing ethPrice state
+  const [ethPrice, setEthPrice] = useState<number>(2000); // Default ETH price in USD
+  // Add tokenPrice calculation
+  const tokenPrice = 50; // Default $50 per token
   
-=======
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
   // Connect wallet
   const connectWallet = async () => {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -104,20 +90,9 @@ export const usePropertyContract = (propertyId: number) => {
         propertyType: "Apartment",
         apartmentType: "",
         amenities: ["Parking", "Security", "Garden"],
-<<<<<<< HEAD
         images: images.length > 0 
           ? images.map((img: string) => formatImageUrl(img))
           : ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
-=======
-        images:
-          images.length > 0
-            ? images.map((img: string) => formatImageUrl(img))
-            : [
-                "/imageforLanding/house.jpg",
-                "/imageforLanding/house2.jpg",
-                "/imageforLanding/house3.jpg",
-              ],
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
         yearBuilt: 2020,
         featured: true,
         tokenAddress: tokenAddress,
@@ -175,115 +150,108 @@ export const usePropertyContract = (propertyId: number) => {
       setLoading(false);
     }
   };
-<<<<<<< HEAD
   
   // Buy tokens from initial sale
   const buyTokens = async () => {
-    if (!account) {
-      setError('Please connect your wallet first');
-      return;
-    }
-    
-    if (tokenAmount <= 0) {
-      setError('Please enter a valid token amount');
-      return;
-    }
+    if (!account || !property || tokenAmount <= 0 || propertyId === undefined) return;
     
     setIsProcessing(true);
-    setError('');
-    setSuccess('');
+    setError(''); // Changed from null to empty string
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
+      if (!provider) throw new Error("Please install MetaMask to continue");
       const signer = await provider.getSigner();
-      
-=======
-
-  // Buy tokens from initial sale
-  const buyTokens = async () => {
-    if (!account) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    if (tokenAmount <= 0) {
-      setError("Please enter a valid token amount");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const provider = new ethers.BrowserProvider(
-        window.ethereum as ethers.Eip1193Provider
-      );
-      const signer = await provider.getSigner();
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
         signer
       );
-<<<<<<< HEAD
       
-      // Calculate cost in ETH (assuming $50 per token as per contract)
-      const costPerToken = 50;
-      const totalCostUSD = tokenAmount * costPerToken;
+      // Calculate cost in ETH (wei)
+      const totalCostUSD = tokenAmount * tokenPrice;
       
-      // For demo purposes, using a fixed ETH price. In production, use an oracle
-      const ethPriceUSD = 2000; // 1 ETH = $2000
-      const costInEth = totalCostUSD / ethPriceUSD;
-      
-      // Convert to wei
-      const costInWei = ethers.parseEther(costInEth.toString());
-      
-      // Call the buyFromSale function
-      const tx = await contract.buyFromSale(propertyId, tokenAmount, {
-        value: costInWei
-      });
-      
-      await tx.wait();
-      setSuccess(`Successfully purchased ${tokenAmount} tokens!`);
-      
-=======
-
-      // Calculate cost in ETH
-      if (!property || property.totalTokens <= 0) {
-        setError("Property data is incomplete or invalid for purchase.");
-        setIsProcessing(false);
-        return;
+      // Add null check for ethPrice
+      if (!ethPrice || ethPrice === 0) {
+        throw new Error("ETH price is not available. Please try again later.");
       }
-
-      const costPerToken = property.price / property.totalTokens; // Use dynamic price
-
-      const totalCostUSD = tokenAmount * costPerToken;
-
-      const ethPriceUSD = 2000; // 1 ETH = $2000. This should ideally be fetched dynamically.
-      const costInEth = totalCostUSD / ethPriceUSD;
-
-      // Convert to wei
-      const costInEthWithBuffer = costInEth * 1.01; // 1% buffer
-      const costInWei = ethers.parseEther(costInEthWithBuffer.toFixed(18)); // Use toFixed for precision
-
+      
+      const costInEth = totalCostUSD / ethPrice;
+      
+      // Validate the calculation result
+      if (isNaN(costInEth) || costInEth <= 0) {
+        throw new Error("Invalid cost calculation. Please try again.");
+      }
+      
+      // Add a buffer to ensure enough ETH is sent (10% more)
+      const costInEthWithBuffer = costInEth * 1.1;
+      
+      // Convert to wei with more precision
+      const totalCost = ethers.parseEther(costInEthWithBuffer.toFixed(18));
+      
       // Call the buyFromSale function
       const tx = await contract.buyFromSale(propertyId, tokenAmount, {
-        value: costInWei,
+        value: totalCost
       });
-
+      
       await tx.wait();
       setSuccess(`Successfully purchased ${tokenAmount} tokens!`);
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
+      
+      // Send notification to property owner about the purchase
+      try {
+        // Get property owner address from the contract
+        const propertyOwner = await contract.getPropertyOwner(propertyId);
+        
+        // Create notification data
+        const notificationData = {
+          type: 'TOKEN_PURCHASE',
+          propertyId: propertyId,
+          tokenAmount: tokenAmount,
+          buyerAddress: account,
+          totalCost: ethers.formatEther(totalCost),
+          timestamp: new Date().toISOString(),
+        };
+        
+        // Store notification in local storage for demo purposes
+        // In a production app, you would send this to a backend service
+        const existingNotifications = JSON.parse(localStorage.getItem('propertyNotifications') || '{}');
+        
+        // Create arrays for both seller and buyer if they don't exist
+        if (!existingNotifications[propertyOwner]) {
+          existingNotifications[propertyOwner] = [];
+        }
+        
+        // Add notification for the property owner (seller)
+        existingNotifications[propertyOwner].push({
+          ...notificationData,
+          type: 'PROPERTY_SOLD'
+        });
+        
+        // Also create a notification for the buyer
+        if (!existingNotifications[account]) {
+          existingNotifications[account] = [];
+        }
+        
+        // Add notification for the buyer with a different type
+        existingNotifications[account].push({
+          ...notificationData,
+          type: 'PROPERTY_PURCHASED'
+        });
+        
+        localStorage.setItem('propertyNotifications', JSON.stringify(existingNotifications));
+        
+        console.log(`Notification sent to property owner ${propertyOwner} and buyer ${account}`);
+      } catch (notificationError) {
+        console.error("Error sending notification:", notificationError);
+        // Don't throw error here, as the purchase was successful
+      }
+      
       // Refresh user balance
       const tokenContract = new ethers.Contract(
         property.tokenAddress,
         PropertyTokenABI,
         provider
       );
-<<<<<<< HEAD
       
       const balance = await tokenContract.balanceOf(account);
       const decimals = await tokenContract.decimals();
@@ -292,20 +260,10 @@ export const usePropertyContract = (propertyId: number) => {
     } catch (error: any) {
       console.error('Error buying tokens:', error);
       setError(error.message || 'Failed to buy tokens. Please try again.');
-=======
-
-      const balance = await tokenContract.balanceOf(account);
-      const decimals = await tokenContract.decimals();
-      setUserBalance(Number(ethers.formatUnits(balance, decimals)));
-    } catch (error: any) {
-      console.error("Error buying tokens:", error);
-      setError(error.message || "Failed to buy tokens. Please try again.");
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
     } finally {
       setIsProcessing(false);
     }
   };
-<<<<<<< HEAD
   
   // Create a listing to sell tokens
   const createListing = async () => {
@@ -337,83 +295,33 @@ export const usePropertyContract = (propertyId: number) => {
       const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
       const signer = await provider.getSigner();
       
-=======
-
-  // Create a listing to sell tokens
-  const createListing = async () => {
-    if (!account) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    if (listingAmount <= 0) {
-      setError("Please enter a valid token amount");
-      return;
-    }
-
-    if (listingPrice <= 0) {
-      setError("Please enter a valid price");
-      return;
-    }
-
-    if (listingAmount > userBalance) {
-      setError("You don't have enough tokens");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const provider = new ethers.BrowserProvider(
-        window.ethereum as ethers.Eip1193Provider
-      );
-      const signer = await provider.getSigner();
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
         signer
       );
-<<<<<<< HEAD
       
-=======
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       // First approve the contract to transfer tokens
       const tokenContract = new ethers.Contract(
         property.tokenAddress,
         PropertyTokenABI,
         signer
       );
-<<<<<<< HEAD
       
       const decimals = await tokenContract.decimals();
       
    
-=======
-
-      const decimals = await tokenContract.decimals();
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       const base = BigInt(10);
       const exponent = BigInt(decimals);
       const multiplier = base ** exponent;
       const tokenAmountWithDecimals = BigInt(listingAmount) * multiplier;
-<<<<<<< HEAD
       
-=======
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       // Approve tokens
       const approveTx = await tokenContract.approve(
         contractAddress.RealEstateTokenFactory,
         tokenAmountWithDecimals
       );
       await approveTx.wait();
-<<<<<<< HEAD
       
       // Create the listing
       const ethPriceUSD = 2000; 
@@ -428,31 +336,10 @@ export const usePropertyContract = (propertyId: number) => {
       // Refresh listings
       const propertyListings = await contract.getListings(propertyId);
       
-=======
-
-      // Create the listing
-      const ethPriceUSD = 2000;
-      const priceInEth = listingPrice / ethPriceUSD;
-      const priceInWei = ethers.parseEther(priceInEth.toString());
-
-      const tx = await contract.listForSale(
-        propertyId,
-        listingAmount,
-        priceInWei
-      );
-      await tx.wait();
-
-      setSuccess("Listing created successfully!");
-
-      // Refresh listings
-      const propertyListings = await contract.getListings(propertyId);
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       // Convert BigInt values in listings to regular numbers
       const formattedListings = propertyListings.map((listing: any) => ({
         seller: listing.seller,
         tokenAmount: Number(listing.tokenAmount),
-<<<<<<< HEAD
         pricePerToken: Number(ethers.formatUnits(listing.pricePerToken, 18))
       }));
       
@@ -461,162 +348,135 @@ export const usePropertyContract = (propertyId: number) => {
     } catch (error: any) {
       console.error('Error creating listing:', error);
       setError(error.message || 'Failed to create listing. Please try again.');
-=======
-        pricePerToken: Number(ethers.formatUnits(listing.pricePerToken, 18)),
-      }));
-
-      setListings(formattedListings);
-    } catch (error: any) {
-      console.error("Error creating listing:", error);
-      setError(error.message || "Failed to create listing. Please try again.");
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
     } finally {
       setIsProcessing(false);
     }
   };
-<<<<<<< HEAD
   
   // Buy tokens from a listing
   const buyFromListing = async (listingIndex: number) => {
-    if (!account) {
-      setError('Please connect your wallet first');
-      return;
-    }
+    if (!account || !property || propertyId === undefined) return;
     
     setIsProcessing(true);
-    setError('');
-    setSuccess('');
+    setError(''); 
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum as ethers.Eip1193Provider);
+      const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
+      if (!provider) throw new Error("Please install MetaMask to continue");
       const signer = await provider.getSigner();
       
-=======
-
-  // Buy tokens from a listing
-  const buyFromListing = async (listingIndex: number) => {
-    if (!account) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const provider = new ethers.BrowserProvider(
-        window.ethereum as ethers.Eip1193Provider
-      );
-      const signer = await provider.getSigner();
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
+      // Get the factory contract
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
         signer
       );
-<<<<<<< HEAD
       
-=======
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       // Get the listing details
+      const listings = await contract.getListings(propertyId);
+      if (listingIndex >= listings.length) {
+        throw new Error("Invalid listing index");
+      }
+      
       const listing = listings[listingIndex];
-      const tokenAmount = listing.tokenAmount;
-      const pricePerToken = listing.pricePerToken;
-      const totalCost = Number(tokenAmount) * Number(pricePerToken);
-<<<<<<< HEAD
+      const seller = listing.seller;
+      const tokenAmount = Number(listing.tokenAmount);
       
-      // For demo purposes, using a fixed ETH price. In production, use an oracle
-      const ethPriceUSD = 2000; // 1 ETH = $2000
-      const costInEth = totalCost / ethPriceUSD;
+      // IMPORTANT: Don't convert the price to a number, keep it as BigInt
+      // This is the key fix - we use the raw pricePerToken from the contract
+      const totalCost = listing.tokenAmount * listing.pricePerToken;
       
-      // Convert to wei
-      const costInWei = ethers.parseEther(costInEth.toString());
+      console.log(`Buying ${tokenAmount} tokens from listing #${listingIndex}`);
+      console.log(`Total cost in wei: ${totalCost.toString()}`);
+      console.log(`Seller: ${seller}`);
       
-      // Call the buyFromListing function
+      // Call the buyFromListing function with the exact wei amount
       const tx = await contract.buyFromListing(propertyId, listingIndex, {
-        value: costInWei
+        value: totalCost
       });
       
-      await tx.wait();
-      setSuccess(`Successfully purchased ${tokenAmount} tokens from listing!`);
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
       
-=======
-
-      // For demo purposes, using a fixed ETH price. In production, use an oracle
-      const ethPriceUSD = 2000; // 1 ETH = $2000
-      const costInEth = totalCost / ethPriceUSD;
-
-      // Convert to wei
-      const costInWei = ethers.parseEther(costInEth.toString());
-
-      // Call the buyFromListing function
-      const tx = await contract.buyFromListing(propertyId, listingIndex, {
-        value: costInWei,
-      });
-
-      await tx.wait();
-      setSuccess(`Successfully purchased ${tokenAmount} tokens from listing!`);
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
+      // Display success message to the buyer
+      setSuccess(`Successfully purchased ${tokenAmount} tokens from listing #${listingIndex + 1}.`);
+      
+      // Refresh listings after purchase
+      fetchListings();
+      
       // Refresh user balance
+      fetchUserBalance();
+      
+      return {
+        success: true,
+        transactionHash: receipt.hash,
+        seller: seller,
+        tokenAmount: tokenAmount
+      };
+    } catch (err) {
+      console.error("Error buying from listing:", err);
+      setError(err instanceof Error ? err.message : "Failed to buy from listing. Please try again.");
+      return { success: false, error: err };
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Add missing fetchListings function
+  const fetchListings = async () => {
+    try {
+      if (typeof window === "undefined" || !window.ethereum) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        contractAddress.RealEstateTokenFactory,
+        RealEstateTokenFactoryABI,
+        provider
+      );
+      
+      // Get listings for this property
+      const propertyListings = await contract.getListings(propertyId);
+      
+      // Convert BigInt values in listings to regular numbers
+      const formattedListings = propertyListings.map((listing: any) => ({
+        seller: listing.seller,
+        tokenAmount: Number(listing.tokenAmount),
+        pricePerToken: Number(ethers.formatUnits(listing.pricePerToken, 18))
+      }));
+      
+      setListings(formattedListings);
+    } catch (error) {
+      console.error("Error fetching listings:", error);
+    }
+  };
+  
+  // Add missing fetchUserBalance function
+  const fetchUserBalance = async () => {
+    try {
+      if (typeof window === "undefined" || !window.ethereum || !account || !property) return;
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const tokenContract = new ethers.Contract(
         property.tokenAddress,
         PropertyTokenABI,
         provider
       );
-<<<<<<< HEAD
       
       const balance = await tokenContract.balanceOf(account);
       const decimals = await tokenContract.decimals();
       setUserBalance(Number(ethers.formatUnits(balance, decimals)));
-      
-      // Refresh listings
-      const propertyListings = await contract.getListings(propertyId);
-      setListings(propertyListings);
-      
-    } catch (error: any) {
-      console.error('Error buying from listing:', error);
-      setError(error.message || 'Failed to buy from listing. Please try again.');
-=======
-
-      const balance = await tokenContract.balanceOf(account);
-      const decimals = await tokenContract.decimals();
-      setUserBalance(Number(ethers.formatUnits(balance, decimals)));
-
-      // Refresh listings
-      const propertyListings = await contract.getListings(propertyId);
-      setListings(propertyListings);
-    } catch (error: any) {
-      console.error("Error buying from listing:", error);
-      setError(
-        error.message || "Failed to buy from listing. Please try again."
-      );
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
-    } finally {
-      setIsProcessing(false);
+    } catch (error) {
+      console.error("Error fetching user balance:", error);
     }
   };
-<<<<<<< HEAD
   
-=======
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
   // Cancel a listing
   const cancelListing = async (listingIndex: number) => {
     // This would require a contract function to cancel listings
     // For now, we'll just show an error
-<<<<<<< HEAD
     setError('Cancelling listings is not implemented in the current contract');
   };
   
-=======
-    setError("Cancelling listings is not implemented in the current contract");
-  };
-
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
   // Initialize data
   useEffect(() => {
     fetchProperty();
@@ -662,10 +522,6 @@ export const usePropertyContract = (propertyId: number) => {
     buyTokens,
     createListing,
     buyFromListing,
-<<<<<<< HEAD
     cancelListing
-=======
-    cancelListing,
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
   };
 };

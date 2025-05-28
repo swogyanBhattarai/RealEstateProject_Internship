@@ -96,7 +96,7 @@ export default function SellPage() {
         const propertyData = {
           address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
           valueUSD: ethers.parseUnits(formData.price, 18),
-          imageUrls: hashes.map(hash => hash), // Just pass the hash, not the full URL
+          imageUrls: hashes.map(hash => hash), 
         };
         
         console.log('Submitting property for approval:', propertyData);
@@ -114,10 +114,7 @@ export default function SellPage() {
         // Reset form after successful submission
         resetForm();
         
-        // Redirect to admin page after a short delay
-        setTimeout(() => {
-          router.push('/page/admin');
-        }, 3000);
+       
       }
     } catch (error) {
       console.error('Error submitting property:', error);

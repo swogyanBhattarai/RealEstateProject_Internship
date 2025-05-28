@@ -12,6 +12,7 @@ contract RealEstateTokenFactory {
         uint256 value;
         address tokenAddress;
         string[] propertyImageURLs;
+        address originalOwner;
     }
 
     struct Listing {
@@ -30,7 +31,10 @@ contract RealEstateTokenFactory {
     }
 
     Property[] public properties;
-    PendingProperty[] public pendingProperties;
+    mapping(uint256 => PendingProperty) public pendingProperties;
+    uint256 public nextPendingPropertyId;
+    uint256[] public activePendingPropertyIds;
+
 
     address public owner;
 
@@ -47,31 +51,27 @@ contract RealEstateTokenFactory {
     }
 
     function submitPropertyForApproval(
-        string memory propertyAddress,
-        uint256 valueUSD,
-        string[] memory _propertyImageURLs
+    string memory propertyAddress,
+    uint256 valueUSD,
+    string[] memory _propertyImageURLs
     ) public {
-        pendingProperties.push(
-            PendingProperty({
-                propertyAddress: propertyAddress,
-                value: valueUSD,
-                originalOwner: msg.sender,
-                approved: false,
-                exists: true,
-                propertyImageURLs: _propertyImageURLs
-            })
-        );
+        pendingProperties[nextPendingPropertyId] = PendingProperty({
+            propertyAddress: propertyAddress,
+            value: valueUSD,
+            originalOwner: msg.sender,
+            approved: false,
+            exists: true,
+            propertyImageURLs: _propertyImageURLs
+        });
+        activePendingPropertyIds.push(nextPendingPropertyId);
+        nextPendingPropertyId++;
     }
+
 
     function approveAndTokenizeProperty(uint256 pendingIndex) public {
         require(msg.sender == owner, "Only admin can approve");
-        require(pendingIndex < pendingProperties.length, "Invalid index");
-
         PendingProperty storage pending = pendingProperties[pendingIndex];
-        require(
-            pending.exists && !pending.approved,
-            "Already handled or invalid"
-        );
+        require(pending.exists && !pending.approved, "Already handled or invalid");
 
         // Tokenization
         uint256 tokenCount = pending.value / 50;
@@ -93,7 +93,8 @@ contract RealEstateTokenFactory {
                 pending.propertyAddress,
                 pending.value,
                 address(token),
-                pending.propertyImageURLs
+                pending.propertyImageURLs,
+                pending.originalOwner
             )
         );
 
@@ -103,7 +104,6 @@ contract RealEstateTokenFactory {
 
     function disapproveProperty(uint256 pendingIndex) public {
         require(msg.sender == owner, "Only admin can disapprove");
-        require(pendingIndex < pendingProperties.length, "Invalid index");
 
         PendingProperty storage pending = pendingProperties[pendingIndex];
         require(pending.exists, "Property already handled");
@@ -112,21 +112,25 @@ contract RealEstateTokenFactory {
     }
 
     function buyFromSale(
-        uint256 propertyId,
-        uint256 tokenAmount
+    uint256 propertyId,
+    uint256 tokenAmount
     ) external payable {
         require(propertyId < properties.length, "Invalid property ID");
 
-        PropertyToken token = PropertyToken(
-            properties[propertyId].tokenAddress
-        );
+        PropertyToken token = PropertyToken(properties[propertyId].tokenAddress);
         uint256 cost = tokenAmount * 50 * (10 ** 18); // Assuming $50 per token in wei
         require(msg.value >= cost, "Insufficient ETH sent");
 
-        token.transferFromSale(
-            msg.sender,
-            tokenAmount * (10 ** token.decimals())
-        );
+        // Transfer tokens from admin's sale pool to buyer
+        token.transferFromSale(msg.sender, tokenAmount * (10 ** token.decimals()));
+
+        // Send ETH to the property owner
+        payable(properties[propertyId].originalOwner).transfer(cost);
+
+        // Refund excess ETH if any
+        if (msg.value > cost) {
+            payable(msg.sender).transfer(msg.value - cost);
+        }
 
         // Track buyer info
         if (propertyBuyers[propertyId][msg.sender] == 0) {
@@ -232,25 +236,33 @@ contract RealEstateTokenFactory {
     }
 
     function getPendingProperties()
-        public
-        view
-        returns (PendingProperty[] memory)
+    public
+    view
+    returns (uint256[] memory propertyIds, PendingProperty[] memory propertiesList)
     {
-        uint256 count;
-        for (uint256 i = 0; i < pendingProperties.length; i++) {
-            if (pendingProperties[i].exists && !pendingProperties[i].approved) {
+        uint256 count = 0;
+        for (uint256 i = 0; i < activePendingPropertyIds.length; i++) {
+            uint256 id = activePendingPropertyIds[i];
+            if (pendingProperties[id].exists && !pendingProperties[id].approved) {
                 count++;
             }
         }
 
-        PendingProperty[] memory active = new PendingProperty[](count);
-        uint256 index;
-        for (uint256 i = 0; i < pendingProperties.length; i++) {
-            if (pendingProperties[i].exists && !pendingProperties[i].approved) {
-                active[index] = pendingProperties[i];
+        propertyIds = new uint256[](count);
+        propertiesList = new PendingProperty[](count);
+        uint256 index = 0;
+
+        for (uint256 i = 0; i < activePendingPropertyIds.length; i++) {
+            uint256 id = activePendingPropertyIds[i];
+            if (pendingProperties[id].exists && !pendingProperties[id].approved) {
+                propertyIds[index] = id;
+                propertiesList[index] = pendingProperties[id];
                 index++;
             }
         }
-        return active;
+
+        return (propertyIds, propertiesList);
     }
+
+
 }

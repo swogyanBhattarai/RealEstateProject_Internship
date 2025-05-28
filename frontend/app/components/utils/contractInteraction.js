@@ -410,15 +410,24 @@ export const getPendingProperties = async () => {
     }
     
     // Format the pending properties
-    const formattedPendingProps = pendingProps.map((prop, index) => ({
-      index,
-      propertyAddress: prop.propertyAddress,
-      value: ethers.formatUnits(prop.value, 18),
-      originalOwner: prop.originalOwner,
-      propertyImageURLs: prop.propertyImageURLs || [],
-      approved: prop.approved,
-      exists: prop.exists
-    }));
+    const formattedPendingProps = pendingProps[1].map((prop, index) => {
+      // Add null checks for each property
+      if (!prop) return null;
+      
+      // Check if value exists before formatting
+      const formattedValue = prop.value ? ethers.formatUnits(prop.value, 18) : '0';
+      
+      return {
+        index,
+        propertyAddress: prop.propertyAddress || '',
+        value: formattedValue,
+        originalOwner: prop.originalOwner || '',
+        propertyImageURLs: prop.propertyImageURLs || [],
+        approved: prop.approved || false,
+        exists: prop.exists || false,
+        contractIndex: pendingProps[0][index] // Use the correct index from the IDs array
+      };
+    }).filter(Boolean); // Remove null entries
     
     console.log("Received properties:", formattedPendingProps);
     return formattedPendingProps;

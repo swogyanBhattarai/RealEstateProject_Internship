@@ -28,27 +28,32 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
   const [userBalance, setUserBalance] = useState<number>(0);
   const [ethPrice, setEthPrice] = useState<number>(2000); // Default ETH price in USD
   const [isLoadingBalance, setIsLoadingBalance] = useState<boolean>(false);
+  const [tokenPrice, setTokenPrice] = useState<number>(50); // Default price per token is $50
+  const [totalTokens, setTotalTokens] = useState<number>(0);
   
-  // Calculate token price based on property value and total tokens
-  const tokenPrice = property ? property.price / 10 : 50; // Default $50 per token
-  const totalTokens = property ? Math.floor(property.price / tokenPrice) : 0;
+  // Fixed token price in ETH as defined in the smart contract
+  const tokenPriceInEth = 50; // 50 ETH per token
+  
+  // Calculate USD price based on current ETH price
+  const tokenPriceInUsd = tokenPriceInEth * ethPrice;
+  const totalCostInEth = tokenPriceInEth * tokenAmount;
+  const totalCostInUsd = tokenPriceInUsd * tokenAmount;
   
   // Fetch ETH price
   useEffect(() => {
     const fetchEthPrice = async () => {
       try {
-<<<<<<< HEAD
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-        const data = await response.json();
-        if (data && data.ethereum && data.ethereum.usd) {
-          setEthPrice(data.ethereum.usd);
-        }
-      } catch (err) {
-        console.error("Error fetching ETH price:", err);
-        // Keep default price if fetch fails
-=======
-        // Attempt to fetch from CoinGecko
-        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        // Try CoinGecko API first with updated options
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0',  // Adding a user agent can help with some API restrictions
+          },
+          cache: 'no-store',
+          // Add timeout to prevent long hanging requests
+          signal: AbortSignal.timeout(5000)
+        });
+        
         if (!response.ok) {
           throw new Error(`API responded with status: ${response.status}`);
         }
@@ -58,36 +63,83 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           setEthPrice(data.ethereum.usd);
           console.log("Successfully fetched ETH price:", data.ethereum.usd);
         } else {
-          throw new Error("Invalid response format from CoinGecko API");
+          // Try alternative API if CoinGecko format is unexpected
+          throw new Error("Unexpected API response format");
         }
       } catch (err) {
-        console.error("Error fetching ETH price from CoinGecko:", err); // First error you see
-        // Fallback attempt (e.g., to Binance, as indicated by your console logs)
+        console.error("Error fetching ETH price from CoinGecko:", err);
+        
+        // Try alternative API as backup
         try {
-          const fallbackResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT'); // Example fallback
-          if (!fallbackResponse.ok) {
-            throw new Error(`Fallback API responded with status: ${fallbackResponse.status}`);
-          }
+          const altResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', {
+            signal: AbortSignal.timeout(5000)
+          });
           
-          const fallbackData = await fallbackResponse.json();
-          if (fallbackData && fallbackData.price) {
-            const price = parseFloat(fallbackData.price);
-            setEthPrice(price);
-            console.log("Successfully fetched ETH price from fallback:", price);
-          } else {
-            throw new Error("Invalid response format from fallback API");
+          if (altResponse.ok) {
+            const altData = await altResponse.json();
+            if (altData && altData.price) {
+              const price = parseFloat(altData.price);
+              setEthPrice(price);
+              console.log("Successfully fetched ETH price from Binance:", price);
+              return;
+            }
           }
-        } catch (fallbackErr) {
-          console.error("Error fetching ETH price from fallback:", fallbackErr); // Second error if fallback also fails
-          console.log("Using default ETH price: 2000"); // Application uses a default
-          // The ethPrice state likely defaults to 2000 or is set here
+          // If we get here, both APIs failed
+          console.log("Using fallback ETH price of $2000");
+        } catch (altErr) {
+          console.error("Error fetching ETH price from alternative source:", altErr);
+          console.log("Using fallback ETH price of $2000");
         }
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
       }
     };
     
     fetchEthPrice();
+    
+    // Set up a retry mechanism that tries again after 5 seconds if the first attempt fails
+    const retryTimeout = setTimeout(() => {
+      // Only retry if we're still using the default price
+      if (ethPrice === 2000) {
+        console.log("Retrying ETH price fetch...");
+        fetchEthPrice();
+      }
+    }, 5000);
+    
+    return () => clearTimeout(retryTimeout);
   }, []);
+  
+  // Add this useEffect to fetch the token price and total tokens
+  useEffect(() => {
+    const fetchTokenDetails = async () => {
+      if (!property || propertyId === undefined) return;
+      
+      try {
+        const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
+        if (!provider) return;
+        
+        const contract = new ethers.Contract(
+          contractAddress.RealEstateTokenFactory,
+          RealEstateTokenFactoryABI,
+          provider
+        );
+        
+        // Get property details
+        const properties = await contract.getProperties();
+        if (propertyId < properties[0].length) {
+          // Set token price (assuming $50 per token as default from the contract)
+          setTokenPrice(50);
+          
+          // Calculate total tokens based on property value
+          const propertyValue = Number(ethers.formatUnits(properties[1][propertyId], 18));
+          const calculatedTotalTokens = Math.floor(propertyValue / 50);
+          setTotalTokens(calculatedTotalTokens);
+        }
+      } catch (err) {
+        console.error("Error fetching token details:", err);
+      }
+    };
+    
+    fetchTokenDetails();
+  }, [property, propertyId]);
   
   // Fetch user's token balance
   const fetchUserBalance = async () => {
@@ -148,53 +200,75 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
       if (!provider) throw new Error("Please install MetaMask to continue");
       const signer = await provider.getSigner();
+      
+      // Get the factory contract
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
         signer
       );
       
-      // Calculate cost in ETH (wei)
-      const totalCostUSD = tokenAmount * tokenPrice;
-      const costInEth = totalCostUSD / ethPrice;
-      
-<<<<<<< HEAD
-      // Add a buffer to ensure enough ETH is sent (10% more)
-      const costInEthWithBuffer = costInEth * 1.1;
-      
-      // Convert to wei with more precision
-      const totalCost = ethers.parseEther(costInEthWithBuffer.toFixed(18));
-=======
-      // Add a much larger buffer to ensure enough ETH is sent (30% more)
-      const costInEthWithBuffer = costInEth * 1.3;
-      
-      // Convert to wei with more precision
-      const totalCost = ethers.parseEther(costInEthWithBuffer.toString());
->>>>>>> c483766da4f027b8aa24db5c2534ee709ab4ca91
+      // Calculate cost exactly as the contract expects
+      // 50 ETH per token converted to wei (10^18)
+      const tokenPriceWei = ethers.parseUnits(tokenPriceInEth.toString(), 18);
+      const totalCost = tokenPriceWei * BigInt(tokenAmount);
       
       console.log(`Buying ${tokenAmount} tokens for property #${propertyId}`);
-      console.log(`Total cost: $${totalCostUSD} (${costInEthWithBuffer} ETH)`);
-      console.log(`Sending value: ${totalCost.toString()} wei`);
+      console.log(`Total cost: ${ethers.formatEther(totalCost)} ETH (approx. $${totalCostInUsd.toLocaleString()})`);
       
-      // Call the buyFromSale function with the correct parameters
-      const tx = await contract.buyFromSale(
-        propertyId,
-        tokenAmount,
-        { value: totalCost }
-      );
+      // Call the buyFromSale function
+      const tx = await contract.buyFromSale(propertyId, tokenAmount, {
+        value: totalCost
+      });
       
       // Wait for transaction to be mined
       const receipt = await tx.wait();
-
+      
       setTransactionHash(receipt.hash);
+      setSuccess(`Successfully purchased ${tokenAmount} tokens for ${ethers.formatEther(totalCost)} ETH`);
       
-      // Update user balance after successful purchase
-      const newBalance = await contract.getBuyerInfo(propertyId, account);
-      setUserBalance(Number(newBalance));
       
-    } catch (err: any) {
+      // Create notification for the purchase
+      try {
+        // Get property owner address from the contract
+        const propertyOwner = await contract.getPropertyOwner(propertyId);
+        
+        // Create notification data
+        const notificationData = {
+          type: 'purchase',
+          propertyId: propertyId,
+          tokenAmount: tokenAmount,
+          buyerAddress: account,
+          totalCost: ethers.formatEther(totalCost),
+          timestamp: new Date().toISOString(),
+          propertyAddress: property.address || "Property #" + propertyId,
+          transactionHash: receipt.hash
+        };
+        
+        // Store notification in localStorage for the property owner
+        const allNotifications = JSON.parse(localStorage.getItem('propertyNotifications') || '{}');
+        
+        if (!allNotifications[propertyOwner]) {
+          allNotifications[propertyOwner] = [];
+        }
+        
+        allNotifications[propertyOwner].push(notificationData);
+        localStorage.setItem('propertyNotifications', JSON.stringify(allNotifications));
+        
+        console.log(`Notification sent to property owner ${propertyOwner}:`, notificationData);
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Don't fail the whole transaction if notification creation fails
+      }
+      
+      // Reset token amount
+      setTokenAmount(1);
+      
+      // Refresh user balance
+      fetchUserBalance();
+    } catch (err) {
       console.error("Error buying tokens:", err);
-      setError(err.message || "Failed to purchase tokens. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to buy tokens. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -233,6 +307,14 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           <DollarSign size={20} />
           <span className="font-semibold">${tokenPrice.toFixed(2)} per token</span>
         </div>
+        
+        {/* Add indicator for fallback ETH price */}
+        {ethPrice === 2000 && (
+          <div className="mt-2 text-xs flex items-center gap-1 text-yellow-400">
+            <AlertCircle size={14} />
+            <span>Using estimated ETH price ($2000). Live price unavailable.</span>
+          </div>
+        )}
       </div>
       
       {account ? (

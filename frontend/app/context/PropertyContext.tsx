@@ -54,27 +54,33 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
       }
       
       const properties = await getPendingProperties();
+      
+      // Add this check to handle empty or invalid properties early
+      if (!properties || !Array.isArray(properties) || properties.length === 0) {
+        console.log('No pending properties found or invalid data received');
+        setPendingProperties([]);
+        return;
+      }
+      
       console.log('Raw pending properties from contract:', properties);
       
-      // Check if properties is defined and is an array before mapping
-      if (properties && Array.isArray(properties)) {
-        console.log('Received properties:', properties);
-        
-        // If properties array is empty, log it but don't update state
-        if (properties.length === 0) {
-          console.log('No pending properties found');
-          setPendingProperties([]);
-          return;
-        }
-        
-        // Transform the properties to match our expected format
-        const formattedProperties = properties.map((prop, index) => {
-          // Add null checks to avoid accessing properties of undefined
-          if (!prop) {
-            console.log(`Property at index ${index} is undefined`);
-            return null;
-          }
-
+      // Filter out invalid properties first
+      const validProperties = properties.filter(prop => 
+        prop && (prop.propertyAddress || prop.value)
+      );
+      
+      console.log('Valid properties count:', validProperties.length);
+      
+      // If no valid properties remain after filtering, update state and return
+      if (validProperties.length === 0) {
+        console.log('No valid pending properties found');
+        setPendingProperties([]);
+        return;
+      }
+      
+      // Transform the properties to match our expected format
+      const formattedProperties = validProperties
+        .map((prop, index) => {
           // Process propertyImageURLs to ensure they are valid URLs
           const processedImageURLs = (prop.propertyImageURLs || []).map((url: string) =>
             typeof url === 'string' && (url.startsWith('http') || url.startsWith('/')) ? url : `https://gateway.pinata.cloud/ipfs/${url}`
@@ -82,7 +88,7 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
           
           return {
             id: index,
-            propertyAddress: prop?.propertyAddress || '',
+            propertyAddress: prop?.propertyAddress || 'No Address Provided',
             value: prop?.value || '0',
             tokenAddress: '',  
             propertyImageURLs: processedImageURLs,
@@ -91,14 +97,10 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
             contractIndex: prop?.contractIndex || index,
             originalOwner: prop?.originalOwner || '' 
           };
-        }).filter(Boolean); // Remove null entries
-        
-        console.log('Formatted properties:', formattedProperties);
-        setPendingProperties(formattedProperties as Property[]);
-      } else {
-        console.error('Invalid properties data received:', properties);
-        setPendingProperties([]);
-      }
+        });
+      
+      console.log('Formatted properties:', formattedProperties);
+      setPendingProperties(formattedProperties as Property[]);
     } catch (error) {
       console.error('Error fetching pending properties:', error);
       setPendingProperties([]);
@@ -112,12 +114,12 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
       fetchPendingProperties();
       
       // Set up an interval to refresh pending properties every 30 seconds
-      const intervalId = setInterval(() => {
-        fetchPendingProperties();
-      }, 30000);
+      // const intervalId = setInterval(() => {
+      //   fetchPendingProperties();
+      // }, 30000);
       
-      // Clean up the interval when the component unmounts
-      return () => clearInterval(intervalId);
+      // // Clean up the interval when the component unmounts
+      // return () => clearInterval(intervalId);
     }
   }, []);
 
@@ -152,7 +154,7 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
         await fetchPendingProperties();
         throw new Error(`Property #${id} might have already been approved or rejected.`);
       } else {
-        throw error; // Re-throw other errors
+        throw error; 
       }
     }
   };
@@ -188,14 +190,14 @@ export const PropertyProvider = ({ children }: { children: React.ReactNode }) =>
         await fetchPendingProperties();
         throw new Error(`Property #${id} might have already been approved or rejected.`);
       } else {
-        throw error; // Re-throw other errors
+        throw error; 
       }
     }
   };
 
   const addProperty = async (property: Property) => {
     setPendingProperties(prev => [...prev, property]);
-    // Refresh the pending properties list to ensure we have the latest data
+    
     await fetchPendingProperties();
   };
 

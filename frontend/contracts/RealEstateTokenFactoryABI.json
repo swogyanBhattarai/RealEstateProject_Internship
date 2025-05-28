@@ -8,6 +8,25 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "activePendingPropertyIds",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "pendingIndex",
         "type": "uint256"
       }
@@ -150,6 +169,11 @@
     "name": "getPendingProperties",
     "outputs": [
       {
+        "internalType": "uint256[]",
+        "name": "propertyIds",
+        "type": "uint256[]"
+      },
+      {
         "components": [
           {
             "internalType": "string",
@@ -183,7 +207,7 @@
           }
         ],
         "internalType": "struct RealEstateTokenFactory.PendingProperty[]",
-        "name": "",
+        "name": "propertiesList",
         "type": "tuple[]"
       }
     ],
@@ -239,6 +263,19 @@
     "name": "listForSale",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextPendingPropertyId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -316,6 +353,11 @@
       {
         "internalType": "address",
         "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "originalOwner",
         "type": "address"
       }
     ],

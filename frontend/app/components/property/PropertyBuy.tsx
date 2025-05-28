@@ -154,17 +154,49 @@ export default function PropertyBuy({ propertyId }: PropertyBuyProps) {
       // Add a 10% buffer to ensure enough ETH is sent
       const ethCostWithBuffer = ethCost * 1.1;
       const ethCostWei = ethers.parseEther(ethCostWithBuffer.toFixed(18));
-
+  
       // Call the buyFromSale function instead of buyTokens
       const tx = await factoryContract.buyFromSale(propertyId, tokenAmount, {
         value: ethCostWei,
       });
-
+  
       // Wait for transaction to be mined
-      await tx.wait();
-
+      const receipt = await tx.wait();
+  
       setSuccess(true);
       setTokenAmount(1);
+      
+      // Send notification to property owner
+      try {
+        // Get property owner address
+        const propertyOwner = await factoryContract.getPropertyOwner(propertyId);
+        
+        // Create notification data
+        const notificationData = {
+          type: 'TOKEN_PURCHASE',
+          propertyId: propertyId,
+          tokenAmount: tokenAmount,
+          buyerAddress: account,
+          totalCost: ethers.formatEther(ethCostWei),
+          timestamp: new Date().toISOString(),
+          propertyName: `Property ${propertyId + 1}`
+        };
+        
+        // Store notification in localStorage
+        const existingNotifications = JSON.parse(localStorage.getItem('propertyNotifications') || '{}');
+        
+        if (!existingNotifications[propertyOwner]) {
+          existingNotifications[propertyOwner] = [];
+        }
+        
+        existingNotifications[propertyOwner].push(notificationData);
+        localStorage.setItem('propertyNotifications', JSON.stringify(existingNotifications));
+        
+        console.log(`Notification sent to property owner ${propertyOwner}`);
+      } catch (notificationError) {
+        console.error("Error sending notification:", notificationError);
+        // Don't fail the transaction if notification fails
+      }
     } catch (err: unknown) {
       console.error("Error buying tokens:", err);
       setError(

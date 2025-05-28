@@ -1,12 +1,26 @@
 import React from 'react';
 import Link from 'next/link';
 import { CheckCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface SuccessMessageProps {
   resetForm: () => void;
 }
 
 const SuccessMessage: React.FC<SuccessMessageProps> = ({ resetForm }) => {
+  const router = useRouter();
+  
+  const handleListAnotherProperty = () => {
+    // First reset the form
+    resetForm();
+    
+    // Then refresh the current page to show the form again
+    router.refresh();
+    
+    // Alternatively, you could navigate to the sell page
+    // router.push('/page/sell');
+  };
+  
   return (
     <div className="bg-white shadow-md rounded-lg p-8 text-center">
       <div className="flex justify-center mb-4">
@@ -21,12 +35,12 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ resetForm }) => {
       </p>
       
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Link href="/page/admin" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+        {/* <Link href="/page/admin" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
           Go to Admin Page
-        </Link>
+        </Link> */}
         
         <button
-          onClick={resetForm}
+          onClick={handleListAnotherProperty}
           className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
         >
           List Another Property

@@ -61,7 +61,7 @@ export default function PropertyListings({ propertyId }: PropertyListingsProps) 
     fetchListings();
   }, [provider, propertyId, success]);
   
-  const handleBuyFromListing = async (listingIndex: number, totalCost: number) => {
+  const handleBuyFromListing = async (listingIndex: number) => {
     if (!account || !provider) {
       setError("Please connect your wallet first");
       return;
@@ -82,23 +82,21 @@ export default function PropertyListings({ propertyId }: PropertyListingsProps) 
         signer
       );
       
-      const ethRate = 2000; // 1 ETH = $2000
-      const ethCost = totalCost / ethRate;
+      // Get the listing details to get the exact price in wei
+      const listingsData = await contract.getListings(propertyId);
+      if (listingIndex >= listingsData.length) {
+        throw new Error("Invalid listing index");
+      }
       
-      // Fix: Round to a reasonable number of decimals (6 is usually safe)
-      // and add a small buffer (5%) to ensure enough ETH is sent
-      const safeEthCost = Math.ceil(ethCost * 1.05 * 1000000) / 1000000;
-      
-      // Convert to wei with proper formatting
-      const ethCostWei = parseEther(safeEthCost.toString());
+      const listing = listingsData[listingIndex];
+      const totalCost = listing.tokenAmount * listing.pricePerToken;
       
       console.log(`Buying from listing #${listingIndex}`);
-      console.log(`Total cost: $${totalCost} (${safeEthCost} ETH)`);
-      console.log(`Sending value: ${ethCostWei.toString()} wei`);
+      console.log(`Total cost in wei: ${totalCost.toString()}`);
       
-      // Call the buyFromListing function
+      // Call the buyFromListing function with the exact wei amount
       const tx = await contract.buyFromListing(propertyId, listingIndex, {
-        value: ethCostWei
+        value: totalCost
       });
       
       // Wait for transaction to be mined
@@ -168,7 +166,7 @@ export default function PropertyListings({ propertyId }: PropertyListingsProps) 
                 <div className="flex justify-between items-center pt-3 border-t border-gray-600">
                   <p className="text-white font-medium">Total: ${totalCost.toFixed(2)}</p>
                   <button
-                    onClick={() => handleBuyFromListing(listing.index, totalCost)}
+                    onClick={() => handleBuyFromListing(listing.index)}
                     disabled={isBuying || !account || listing.seller.toLowerCase() === account.toLowerCase()}
                     className={`px-4 py-2 rounded-lg text-sm font-medium
                       ${isBuying 
