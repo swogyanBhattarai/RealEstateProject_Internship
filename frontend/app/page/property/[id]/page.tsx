@@ -5,14 +5,14 @@ import Image from 'next/image';
 import Navbar from '../../../components/navbar';
 import Footer from '../../../components/footer';
 import { 
-  Heart, ArrowLeft, ArrowRight, Share2
+ ArrowLeft, ArrowRight, Share2
 } from 'lucide-react';
 import PropertyHeader from './components/PropertyHeader';
 import PropertyInformation from './components/PropertyInformation';
 import TokenPurchaseSection from './components/TokenPurchaseSection';
 import TokenListingsSection from './components/TokenListingsSection';
 import { usePropertyContract } from './hooks/usePropertyContract';
-import ethers from 'ethers';
+// import ethers from 'ethers';
 
 
 export default function PropertyDetails() {
@@ -30,15 +30,12 @@ export default function PropertyDetails() {
     listings, 
     error, 
     success, 
-    tokenAmount, 
-    setTokenAmount, 
     listingAmount, 
     setListingAmount, 
     listingPrice, 
     setListingPrice, 
     isProcessing, 
     connectWallet, 
-    buyTokens, 
     createListing, 
     buyFromListing, 
     cancelListing 
@@ -84,7 +81,7 @@ export default function PropertyDetails() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center py-12">
               <h1 className="text-3xl font-bold text-white mb-4">Property Not Found</h1>
-              <p className="text-gray-400 mb-8">The property you're looking for doesn't exist or has been removed.</p>
+              <p className="text-gray-400 mb-8">The property you&apos;re looking for doesn&apos;t exist or has been removed.</p>
             </div>
           </div>
         </div>
@@ -170,7 +167,9 @@ export default function PropertyDetails() {
                 setListingPrice={setListingPrice}
                 isProcessing={isProcessing}
                 createListing={createListing}
-                buyFromListing={buyFromListing}
+                buyFromListing={async (index: number) => {
+                  await buyFromListing(index);
+                }}
                 cancelListing={cancelListing}
               />
               

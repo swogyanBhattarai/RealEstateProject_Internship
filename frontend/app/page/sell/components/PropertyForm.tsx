@@ -33,13 +33,11 @@ interface PropertyFormProps {
 export default function PropertyForm({
   currentStep,
   formData,
-  setFormData,
   errors,
   touched,
   handleInputChange,
   handleBlur,
   handleAmenityToggle,
-  validateField
 }: PropertyFormProps) {
   
   // Available apartment types

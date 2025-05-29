@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Bell, DollarSign, Clock, User, Home, ExternalLink, Check } from 'lucide-react';
+import { Bell, DollarSign, User, Home, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useWallet } from '../hooks/usewallet';
 

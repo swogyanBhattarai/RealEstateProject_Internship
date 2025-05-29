@@ -42,7 +42,7 @@ export default function PropertySell({ propertyId }: PropertySellProps) {
         );
         
         // Get the property details to find the token address
-        const [propertyAddresses, values, tokenAddresses, propertyImageURLs] = await factoryContract.getProperties();
+        const [propertyAddresses, tokenAddresses] = await factoryContract.getProperties();
         const propertyTokenAddress = tokenAddresses[propertyId];
         
         if (propertyId >= propertyAddresses.length) {

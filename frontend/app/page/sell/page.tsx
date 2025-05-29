@@ -1,8 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Navbar from '../../components/navbar'; 
-import Footer from '../../components/footer'; 
+import Navbar from '../../components/navbar';
+import Footer from '../../components/footer';
 import { ethers } from 'ethers';
 import contractAddress from '../../../contracts/contract-address.json';
 import RealEstateTokenFactoryABI from '../../../contracts/RealEstateTokenFactoryABI.json';
@@ -15,7 +14,6 @@ import SuccessMessage from './components/SuccessMessage';
 import ErrorMessage from './components/ErrorMessage';
 
 export default function SellPage() {
-  const router = useRouter();
   // Form state
   const [formData, setFormData] = useState({
     propertyType: 'apartment',
@@ -39,14 +37,14 @@ export default function SellPage() {
   // Image upload state
   const [images, setImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [ipfsHashes, setIpfsHashes] = useState<string[]>([]); 
+  const [ipfsHashes, setIpfsHashes] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  
+
   // Step navigation state
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 4;
-  
+
   // Form validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -54,21 +52,21 @@ export default function SellPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate all fields
     if (!validateStep(currentStep)) {
       return;
     }
-    
+
     // Check if images are uploaded
     if (images.length === 0) {
-      setErrors(prev => ({ ...prev, images: 'Please upload at least one image' }));
+      setErrors((prev) => ({ ...prev, images: 'Please upload at least one image' }));
       return;
     }
-    
+
     setIsSubmitting(true);
     setSubmitStatus('idle');
-    
+
     try {
       // Upload images to IPFS
       const hashes = await Promise.all(
@@ -76,45 +74,39 @@ export default function SellPage() {
           return await uploadToIPFS(image);
         })
       );
-      
+
       setIpfsHashes(hashes);
-      
+
       // Submit property data to blockchain
       const { ethereum } = window as any;
-      
+
       if (ethereum) {
         const provider = new ethers.BrowserProvider(ethereum);
         const signer = await provider.getSigner();
         const factoryContractAddress = contractAddress.RealEstateTokenFactory;
-        const contract = new ethers.Contract(
-          factoryContractAddress,
-          RealEstateTokenFactoryABI,
-          signer
-        );
-        
+        const contract = new ethers.Contract(factoryContractAddress, RealEstateTokenFactoryABI, signer);
+
         // Create property object
         const propertyData = {
           address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
           valueUSD: ethers.parseUnits(formData.price, 18),
-          imageUrls: hashes.map(hash => hash), 
+          imageUrls: hashes.map((hash) => hash),
         };
-        
+
         console.log('Submitting property for approval:', propertyData);
-        
+
         // Submit property for approval
         const tx = await contract.submitPropertyForApproval(
           propertyData.address,
           propertyData.valueUSD,
           propertyData.imageUrls
         );
-        
+
         await tx.wait();
-        
+
         setSubmitStatus('success');
         // Reset form after successful submission
         resetForm();
-        
-       
       }
     } catch (error) {
       console.error('Error submitting property:', error);
@@ -152,10 +144,10 @@ export default function SellPage() {
   // Validate a single field
   const validateField = (name: string, value: string) => {
     const newErrors = { ...errors };
-    
+
     // Clear previous error for this field
     delete newErrors[name];
-    
+
     // Validation rules based on field name
     switch (name) {
       case 'apartmentType':
@@ -200,7 +192,7 @@ export default function SellPage() {
       default:
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -209,17 +201,17 @@ export default function SellPage() {
   const validateStep = (step: number): boolean => {
     let isValid = true;
     const newTouched: Record<string, boolean> = { ...touched };
-    
+
     // Fields to validate for each step
     const stepFields: Record<number, string[]> = {
       1: ['apartmentType', 'title', 'description', 'price'],
       2: ['bedrooms', 'bathrooms', 'area'],
       3: ['address', 'city', 'state', 'zipCode'],
-      4: [] // No required fields in step 4
+      4: [], // No required fields in step 4
     };
-    
+
     // Validate all fields for the current step
-    stepFields[step].forEach(field => {
+    stepFields[step].forEach((field) => {
       newTouched[field] = true;
       const value = formData[field as keyof typeof formData]?.toString() || '';
       if (!validateField(field, value)) {
@@ -228,15 +220,16 @@ export default function SellPage() {
         validateField(field, value);
       }
     });
-    
+
     setTouched(newTouched);
     return isValid;
   };
+
   // Handle amenity selection
   const handleAmenityToggle = (amenity: string) => {
-    setFormData(prev => {
+    setFormData((prev) => {
       const updatedAmenities = prev.amenities.includes(amenity)
-        ? prev.amenities.filter(a => a !== amenity)
+        ? prev.amenities.filter((a) => a !== amenity)
         : [...prev.amenities, amenity];
 
       return { ...prev, amenities: updatedAmenities };
@@ -253,20 +246,20 @@ export default function SellPage() {
         return;
       }
 
-      const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
+      const newPreviewUrls = newFiles.map((file) => URL.createObjectURL(file));
 
-      setImages(prev => [...prev, ...newFiles]);
-      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-      
+      setImages((prev) => [...prev, ...newFiles]);
+      setPreviewUrls((prev) => [...prev, ...newPreviewUrls]);
+
       // Clear any image-related errors when images are uploaded
       if (errors.images) {
-        setErrors(prev => {
-          const newErrors = {...prev};
+        setErrors((prev) => {
+          const newErrors = { ...prev };
           delete newErrors.images;
           return newErrors;
         });
       }
-      
+
       // Reset error status if it was related to images
       if (submitStatus === 'error') {
         setSubmitStatus('idle');
@@ -276,15 +269,15 @@ export default function SellPage() {
 
   // Remove an image
   const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+    setImages((prev) => prev.filter((_, i) => i !== index));
 
     // Revoke the object URL to avoid memory leaks
     URL.revokeObjectURL(previewUrls[index]);
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
 
     // Also remove the IPFS hash if it exists
     if (ipfsHashes.length > index) {
-      setIpfsHashes(prev => prev.filter((_, i) => i !== index));
+      setIpfsHashes((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -317,9 +310,9 @@ export default function SellPage() {
       <div className="pt-24 pb-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-white mb-6">List Your Property</h1>
-          
+
           <ProgressBar currentStep={currentStep} totalSteps={totalSteps} />
-          
+
           {submitStatus === 'success' ? (
             <SuccessMessage resetForm={resetForm} />
           ) : (
@@ -327,8 +320,8 @@ export default function SellPage() {
               {submitStatus === 'error' && (
                 <ErrorMessage message="There was an error submitting your property. Please try again." />
               )}
-              
-              <PropertyForm 
+
+              <PropertyForm
                 currentStep={currentStep}
                 formData={formData}
                 setFormData={setFormData}
@@ -336,20 +329,20 @@ export default function SellPage() {
                 touched={touched}
                 handleInputChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
                   const { name, value } = e.target;
-                  setFormData(prev => ({ ...prev, [name]: value }));
+                  setFormData((prev) => ({ ...prev, [name]: value }));
                   validateField(name, value);
                 }}
                 handleBlur={(e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
                   const { name, value } = e.target;
-                  setTouched(prev => ({ ...prev, [name]: true }));
+                  setTouched((prev) => ({ ...prev, [name]: true }));
                   validateField(name, value);
                 }}
                 handleAmenityToggle={handleAmenityToggle}
                 validateField={validateField}
               />
-              
+
               {currentStep === 4 && (
-                <ImageUploader 
+                <ImageUploader
                   images={images}
                   previewUrls={previewUrls}
                   setImages={setImages}
@@ -358,10 +351,12 @@ export default function SellPage() {
                   setErrors={setErrors}
                   submitStatus={submitStatus}
                   setSubmitStatus={setSubmitStatus}
+                  handleImageUpload={handleImageUpload}
+                  removeImage={removeImage}
                 />
               )}
-              
-              <FormNavigation 
+
+              <FormNavigation
                 currentStep={currentStep}
                 totalSteps={totalSteps}
                 prevStep={prevStep}
@@ -376,4 +371,3 @@ export default function SellPage() {
     </div>
   );
 }
-

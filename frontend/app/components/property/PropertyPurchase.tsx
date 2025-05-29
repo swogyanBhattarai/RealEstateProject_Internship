@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 import { useWallet } from '../hooks/usewallet';
 import { buyTokensFromSale, buyTokensFromListing, getUserTokenBalance } from '../utils/contractInteraction';
 import { DollarSign, Wallet, AlertCircle, Check } from 'lucide-react';
@@ -20,7 +19,6 @@ interface PropertyPurchaseProps {
 export default function PropertyPurchase({
   propertyId,
   propertyPrice,
-  tokenAddress,
   listingIndex,
   listingPrice,
   listingTokenAmount,
@@ -33,9 +31,9 @@ export default function PropertyPurchase({
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
+ 
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [ethPrice, setEthPrice] = useState<number>(2000); // Default ETH price in USD
+  const [ethPrice] = useState<number>(2000); // Default ETH price in USD
   
   // Calculate token price based on property value
   const tokenPrice = purchaseType === 'sale' ? 50 : listingPrice || 50; // Default $50 per token
@@ -79,7 +77,8 @@ export default function PropertyPurchase({
       }
       
       setTransactionHash(result.transactionHash);
-      setSuccess(true);
+      // In the handlePurchase function, remove this line:
+      // setSuccess(true);
       
       // Call success callback if provided
       if (onSuccess) onSuccess(result);

@@ -2,21 +2,21 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 
+// Array of house images from the correct path
+const houseImages = [
+  "/imageforLanding/house.jpg",
+  "/imageforLanding/house2.jpg",
+  "/imageforLanding/house3.jpg",
+  "/imageforLanding/house4.jpg",
+  "/imageforLanding/house5.jpg",
+  "/imageforLanding/house6.jpg",
+  "/imageforLanding/house7.jpg",
+];
+
 export default function HeroSection() {
   // State for image slideshow
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);  
 
-  // Array of house images from the correct path
-  const houseImages = [
-    "/imageforLanding/house.jpg",
-    "/imageforLanding/house2.jpg",
-    "/imageforLanding/house3.jpg",
-    "/imageforLanding/house4.jpg",
-    "/imageforLanding/house5.jpg",
-    "/imageforLanding/house7.jpg",
-  ];
-
-  // Effect for image slideshow
   useEffect(() => {
     const interval = setInterval(() => {
       // Change to next image every 3 seconds
@@ -30,7 +30,6 @@ export default function HeroSection() {
 
   return (
     <div className="relative h-[900px] md:h-[750px] bg-black">
-      {/* Background Image Slideshow */}
       <div className="absolute inset-0 overflow-hidden">
         {houseImages.map((img, index) => (
           <div

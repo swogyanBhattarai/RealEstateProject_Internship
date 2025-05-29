@@ -155,7 +155,7 @@ export const buyTokensFromListingV2 = async (propertyId, listingIndex) => {
 export const getUserTokenBalance = async (propertyId, userAddress) => {
   try {
     const contract = await getFactoryContract();
-    const [propertyAddresses, values, tokenAddresses] = await contract.getProperties();
+    const [ tokenAddresses] = await contract.getProperties();
 
     if (propertyId >= tokenAddresses.length) {
       throw new Error("Invalid property ID");
@@ -203,7 +203,7 @@ export const listTokensForSaleFromProfile = async (propertyId, tokenAmount, pric
     const priceInWei = ethers.parseEther(pricePerToken.toString());
     
     // Get token contract to approve transfer
-    const [propertyAddresses, values, tokenAddresses] = await contract.getProperties();
+    const [ tokenAddresses] = await contract.getProperties();
     
     if (propertyId >= tokenAddresses.length) {
       throw new Error("Invalid property ID");
@@ -361,7 +361,7 @@ export const listTokensForSale = async (propertyId, tokenAmount, pricePerToken) 
     const contract = await getFactoryContract(true);
     
     // Get property details to find token address
-    const [propertyAddresses, values, tokenAddresses] = await contract.getProperties();
+    const [propertyAddresses, tokenAddresses] = await contract.getProperties();
     
     if (propertyId >= propertyAddresses.length) {
       throw new Error("Invalid property ID");

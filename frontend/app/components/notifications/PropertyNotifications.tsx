@@ -50,7 +50,6 @@ export default function PropertyNotifications() {
         console.log('Loaded notifications for account:', account, userNotifications);
         
         // If no notifications for this account, check if we have any notifications at all
-        // This is useful for testing or if notifications are stored in a different format
         if (userNotifications.length === 0 && Object.keys(allNotifications).length > 0) {
           // Collect all notifications from all accounts
           const allAccountNotifications = [];

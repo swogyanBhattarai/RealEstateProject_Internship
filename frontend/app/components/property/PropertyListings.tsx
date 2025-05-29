@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { formatUnits, parseEther } from 'ethers';
+import { formatUnits } from 'ethers';
 import { useWallet } from '../hooks/usewallet';
 import RealEstateTokenFactoryABI from '../../../contracts/RealEstateTokenFactoryABI.json';
 import contractAddress from '../../../contracts/contract-address.json';

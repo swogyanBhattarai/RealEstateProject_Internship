@@ -78,7 +78,7 @@ export default function FavoriteProperties() {
   if (properties.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-400 mb-4">You haven't added any properties to your favorites yet.</p>
+        <p className="text-gray-400 mb-4">You haven&apos;t added any properties to your favorites yet.</p>
         <Link 
           href="/page/buy" 
           className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

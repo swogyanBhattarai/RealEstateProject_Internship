@@ -26,7 +26,7 @@ export default function PropertyBuy({ propertyId }: PropertyBuyProps) {
     pricePerToken: string;
     availableTokens: number;
     totalTokens: number;
-    imageCID?: string; // Add imageCID to propertyDetails state
+    imageCID?: string; 
   } | null>(null);
 
   // Initialize provider
@@ -161,7 +161,7 @@ export default function PropertyBuy({ propertyId }: PropertyBuyProps) {
       });
   
       // Wait for transaction to be mined
-      const receipt = await tx.wait();
+      await tx.wait();
   
       setSuccess(true);
       setTokenAmount(1);

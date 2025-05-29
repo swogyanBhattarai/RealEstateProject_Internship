@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -46,10 +46,12 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [listingAmount, setListingAmount] = useState<{[key: number]: string}>({});
   const [listingPrice, setListingPrice] = useState<{[key: number]: string}>({});
-  // Change from a boolean to an object to track per-property listing state
   const [isListing, setIsListing] = useState<{[key: number]: boolean}>({});
-  // Add state for notifications visibility
   const [showNotifications, setShowNotifications] = useState(false);
+
+  const toggleNotifications = useCallback(() => {
+    setShowNotifications(prev => !prev);
+  }, []);
 
   const handleListingAmountChange = (propertyId: number, value: string) => {
     setListingAmount(prev => ({...prev, [propertyId]: value}));
@@ -59,7 +61,7 @@ export default function ProfilePage() {
     setListingPrice(prev => ({...prev, [propertyId]: value}));
   };
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!account) return;
 
     try {
@@ -142,7 +144,7 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [account]);
 
   const handleListForSale = async (propertyId: number) => {
     const amount = listingAmount[propertyId];
@@ -237,10 +239,9 @@ export default function ProfilePage() {
       setIsListing(prev => ({...prev, [propertyId]: false}));
     }
   };
-
   useEffect(() => {
     fetchUserData();
-  }, [account]);
+  }, [fetchUserData]);
   
   if (!account) {
     return (
@@ -296,9 +297,10 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="mt-4 md:mt-0">
-                    <PropertyNotifications />
+                    <div className="mt-4 md:mt-0">
+                    <div onClick={toggleNotifications}>
+                      <PropertyNotifications />
+                    </div>
                     <div className={showNotifications ? "block" : "hidden"}>
                       <NotificationsList notifications={[]} />
                     </div>
@@ -385,7 +387,7 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-400 mb-4">You haven't listed any properties for sale yet.</p>
+                      <p className="text-gray-400 mb-4">You haven&apos;t listed any properties for sale yet</p>
                       <Link 
                         href="/page/sell" 
                         className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -469,7 +471,8 @@ export default function ProfilePage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-400 mb-4">You haven't purchased any property tokens yet.</p>
+                    <p className="text-gray-400 mb-4">You haven&apos;t purchased any property tokens yet.</p>
+
                       <Link 
                         href="/page/buy" 
                         className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

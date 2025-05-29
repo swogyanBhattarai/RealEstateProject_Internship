@@ -11,59 +11,23 @@ interface ImageUploaderProps {
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   submitStatus: 'idle' | 'success' | 'error';
   setSubmitStatus: React.Dispatch<React.SetStateAction<'idle' | 'success' | 'error'>>;
+  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  removeImage: (index: number) => void;
 }
 
 export default function ImageUploader({
-  images,
+  // images,
   previewUrls,
-  setImages,
-  setPreviewUrls,
+  // setImages,
+  // setPreviewUrls,
   errors,
-  setErrors,
-  submitStatus,
-  setSubmitStatus
+  // setErrors,
+  // submitStatus,
+  // setSubmitStatus,
+  handleImageUpload,
+  removeImage
 }: ImageUploaderProps) {
   
-  // Handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-
-      if (images.length + newFiles.length > 5) {
-        alert('You can only upload up to 5 images.');
-        return;
-      }
-
-      const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
-
-      setImages(prev => [...prev, ...newFiles]);
-      setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-      
-      // Clear any image-related errors when images are uploaded
-      if (errors.images) {
-        setErrors(prev => {
-          const newErrors = {...prev};
-          delete newErrors.images;
-          return newErrors;
-        });
-      }
-      
-      // Reset error status if it was related to images
-      if (submitStatus === 'error') {
-        setSubmitStatus('idle');
-      }
-    }
-  };
-
-  // Remove an image
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-
-    // Revoke the object URL to avoid memory leaks
-    URL.revokeObjectURL(previewUrls[index]);
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
-  };
-
   return (
     <div>
       <h3 className="text-lg font-medium text-gray-700 mb-3">Property Images</h3>

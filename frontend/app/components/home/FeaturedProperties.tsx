@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield, Star, ArrowRight } from 'lucide-react';
+import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield } from 'lucide-react';
 import { useWallet } from '../hooks/usewallet';
 import { useFavorites } from '../hooks/useFavorites';
 import { useRouter } from 'next/navigation';
@@ -32,7 +32,7 @@ interface Property {
 
 export default function FeaturedProperties() {
   const { account, connectWallet, isConnecting } = useWallet();
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
+  const {  toggleFavorite, isFavorite } = useFavorites();
   const [featuredProperties, setFeaturedProperties] = useState<Property[]>([]);
   const router = useRouter();
 
@@ -52,7 +52,6 @@ export default function FeaturedProperties() {
           const [
             propertyAddresses, 
             values, 
-            tokenAddresses, 
             propertyImageURLs
           ] = await contract.getProperties();
           

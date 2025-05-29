@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DollarSign, Wallet, Info, AlertCircle, Check, RefreshCw } from 'lucide-react';
 import { ethers } from 'ethers';
 import RealEstateTokenFactoryABI from '../../../../../contracts/RealEstateTokenFactoryABI.json';
@@ -36,21 +37,20 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
   
   // Calculate USD price based on current ETH price
   const tokenPriceInUsd = tokenPriceInEth * ethPrice;
-  const totalCostInEth = tokenPriceInEth * tokenAmount;
   const totalCostInUsd = tokenPriceInUsd * tokenAmount;
   
   // Fetch ETH price
   useEffect(() => {
+    let isMounted = true;
+
     const fetchEthPrice = async () => {
       try {
-        // Try CoinGecko API first with updated options
         const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', {
           headers: {
             'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0',  // Adding a user agent can help with some API restrictions
+            'User-Agent': 'Mozilla/5.0',
           },
           cache: 'no-store',
-          // Add timeout to prevent long hanging requests
           signal: AbortSignal.timeout(5000)
         });
         
@@ -59,23 +59,21 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
         }
         
         const data = await response.json();
-        if (data && data.ethereum && data.ethereum.usd) {
+        if (data && data.ethereum && data.ethereum.usd && isMounted) {
           setEthPrice(data.ethereum.usd);
           console.log("Successfully fetched ETH price:", data.ethereum.usd);
         } else {
-          // Try alternative API if CoinGecko format is unexpected
           throw new Error("Unexpected API response format");
         }
       } catch (err) {
         console.error("Error fetching ETH price from CoinGecko:", err);
         
-        // Try alternative API as backup
         try {
           const altResponse = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT', {
             signal: AbortSignal.timeout(5000)
           });
           
-          if (altResponse.ok) {
+          if (altResponse.ok && isMounted) {
             const altData = await altResponse.json();
             if (altData && altData.price) {
               const price = parseFloat(altData.price);
@@ -84,7 +82,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
               return;
             }
           }
-          // If we get here, both APIs failed
           console.log("Using fallback ETH price of $2000");
         } catch (altErr) {
           console.error("Error fetching ETH price from alternative source:", altErr);
@@ -95,19 +92,22 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
     
     fetchEthPrice();
     
-    // Set up a retry mechanism that tries again after 5 seconds if the first attempt fails
+    // Retry mechanism
     const retryTimeout = setTimeout(() => {
-      // Only retry if we're still using the default price
-      if (ethPrice === 2000) {
+      if (isMounted && ethPrice === 2000) {
         console.log("Retrying ETH price fetch...");
         fetchEthPrice();
       }
     }, 5000);
     
-    return () => clearTimeout(retryTimeout);
-  }, []);
+    return () => {
+      isMounted = false;
+      clearTimeout(retryTimeout);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ethPrice intentionally excluded due to isMounted handling retry logic
   
-  // Add this useEffect to fetch the token price and total tokens
+  // Fetch token price and total tokens
   useEffect(() => {
     const fetchTokenDetails = async () => {
       if (!property || propertyId === undefined) return;
@@ -122,13 +122,9 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           provider
         );
         
-        // Get property details
         const properties = await contract.getProperties();
         if (propertyId < properties[0].length) {
-          // Set token price (assuming $50 per token as default from the contract)
           setTokenPrice(50);
-          
-          // Calculate total tokens based on property value
           const propertyValue = Number(ethers.formatUnits(properties[1][propertyId], 18));
           const calculatedTotalTokens = Math.floor(propertyValue / 50);
           setTotalTokens(calculatedTotalTokens);
@@ -142,7 +138,7 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
   }, [property, propertyId]);
   
   // Fetch user's token balance
-  const fetchUserBalance = async () => {
+  const fetchUserBalance = useCallback(async () => {
     if (!account || !property || propertyId === undefined) return;
     
     setIsLoadingBalance(true);
@@ -151,7 +147,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       const provider = window.ethereum ? new ethers.BrowserProvider(window.ethereum) : null;
       if (!provider) return;
       
-      // First check if the user has tokens from initial purchase
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
@@ -161,7 +156,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       const buyerInfo = await contract.getBuyerInfo(propertyId, account);
       let balance = Number(buyerInfo);
       
-      // Then check token balance from the token contract
       if (property.tokenAddress) {
         const tokenContract = new ethers.Contract(
           property.tokenAddress,
@@ -173,7 +167,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
         const decimals = await tokenContract.decimals();
         const formattedBalance = Number(ethers.formatUnits(tokenBalance, decimals));
         
-        // Use the higher of the two balances
         balance = Math.max(balance, formattedBalance);
       }
       
@@ -183,11 +176,11 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
     } finally {
       setIsLoadingBalance(false);
     }
-  };
+  }, [account, property, propertyId]);
   
   useEffect(() => {
     fetchUserBalance();
-  }, [account, property, propertyId, transactionHash]);
+  }, [account, property, propertyId, transactionHash, fetchUserBalance]);
   
   // Buy tokens function
   const buyTokens = async () => {
@@ -201,39 +194,30 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       if (!provider) throw new Error("Please install MetaMask to continue");
       const signer = await provider.getSigner();
       
-      // Get the factory contract
       const contract = new ethers.Contract(
         contractAddress.RealEstateTokenFactory,
         RealEstateTokenFactoryABI,
         signer
       );
       
-      // Calculate cost exactly as the contract expects
-      // 50 ETH per token converted to wei (10^18)
       const tokenPriceWei = ethers.parseUnits(tokenPriceInEth.toString(), 18);
       const totalCost = tokenPriceWei * BigInt(tokenAmount);
       
       console.log(`Buying ${tokenAmount} tokens for property #${propertyId}`);
       console.log(`Total cost: ${ethers.formatEther(totalCost)} ETH (approx. $${totalCostInUsd.toLocaleString()})`);
       
-      // Call the buyFromSale function
       const tx = await contract.buyFromSale(propertyId, tokenAmount, {
         value: totalCost
       });
       
-      // Wait for transaction to be mined
       const receipt = await tx.wait();
       
       setTransactionHash(receipt.hash);
       setSuccess(`Successfully purchased ${tokenAmount} tokens for ${ethers.formatEther(totalCost)} ETH`);
       
-      
-      // Create notification for the purchase
       try {
-        // Get property owner address from the contract
         const propertyOwner = await contract.getPropertyOwner(propertyId);
         
-        // Create notification data
         const notificationData = {
           type: 'purchase',
           propertyId: propertyId,
@@ -245,7 +229,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           transactionHash: receipt.hash
         };
         
-        // Store notification in localStorage for the property owner
         const allNotifications = JSON.parse(localStorage.getItem('propertyNotifications') || '{}');
         
         if (!allNotifications[propertyOwner]) {
@@ -258,13 +241,9 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
         console.log(`Notification sent to property owner ${propertyOwner}:`, notificationData);
       } catch (notificationError) {
         console.error('Error creating notification:', notificationError);
-        // Don't fail the whole transaction if notification creation fails
       }
       
-      // Reset token amount
       setTokenAmount(1);
-      
-      // Refresh user balance
       fetchUserBalance();
     } catch (err) {
       console.error("Error buying tokens:", err);
@@ -291,8 +270,8 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
       {showInfo && (
         <div className="mb-4 p-3 bg-blue-900/20 border border-blue-800/50 rounded-md text-sm">
           <p className="text-gray-300">
-            When you purchase tokens, you're buying partial ownership of this property. 
-            Each token represents a fraction of the property's value. You can later sell 
+            When you purchase tokens, you&apos;re buying partial ownership of this property. 
+            Each token represents a fraction of the property&apos;s value. You can later sell 
             these tokens on the marketplace to other investors.
           </p>
         </div>
@@ -308,7 +287,6 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           <span className="font-semibold">${tokenPrice.toFixed(2)} per token</span>
         </div>
         
-        {/* Add indicator for fallback ETH price */}
         {ethPrice === 2000 && (
           <div className="mt-2 text-xs flex items-center gap-1 text-yellow-400">
             <AlertCircle size={14} />
@@ -394,33 +372,43 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
           )}
           
           {success && (
-            <div className="mb-4 p-3 bg-green-900/20 border border-green-800/50 rounded-md text-sm flex items-start gap-2">
-              <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-              <p className="text-green-300">{success}</p>
+            <div className="mb-4 p-3 bg-green-600 rounded-md text-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Check size={16} className="text-white flex-shrink-0" />
+                <p className="text-white">{success}</p>
+              </div>
+              <button
+                onClick={() => setSuccess(null)}
+                className="text-white hover:text-gray-200"
+              >
+                Dismiss
+              </button>
             </div>
           )}
           
           {transactionHash && (
-            <div className="mb-4 p-3 bg-gray-800 rounded-md text-xs flex items-start gap-2">
+            <div className="mb-4 p-4 bg-gray-800 rounded-md text-sm flex items-start gap-2">
               <div className="w-full">
-                <p className="text-gray-400 mb-1">Transaction Hash:</p>
-                <div className="flex items-center justify-between">
-                  <code className="text-blue-300 break-all">{transactionHash}</code>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(transactionHash);
-                      alert("Transaction hash copied to clipboard!");
-                    }}
-                    className="ml-2 text-gray-400 hover:text-white"
-                  >
-                    Copy
-                  </button>
+                <p className="text-gray-600 font-semibold mb-1">Transaction Hash</p>
+                <div className="flex items-center">
+                  <div className="w-full p-2 bg-gray-200 rounded-md flex items-center justify-between">
+                    <code className="text-blue-800 break-all">{transactionHash}</code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(transactionHash);
+                        alert("Copied to clipboard!");
+                      }}
+                      className="ml-2 text-blue-600 hover:text-blue-400"
+                    >
+                      Copy
+                    </button>
+                  </div>
                 </div>
                 <a
                   href={`https://etherscan.io/tx/${transactionHash}`}
                   target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-400 hover:text-blue-300 mt-2 inline-block"
+                  rel="noreferrer"
+                  className="text-blue-600 hover:text-blue-400 block mt-2"
                 >
                   View on Etherscan
                 </a>
@@ -433,34 +421,35 @@ const TokenPurchaseSection: React.FC<TokenPurchaseSectionProps> = ({
             disabled={isProcessing || tokenAmount <= 0}
             className={`w-full py-3 rounded-md font-medium transition-all duration-300 ${
               isProcessing || tokenAmount <= 0
-                ? 'bg-gray-700 text-gray-400'
-                : 'bg-gradient-to-r from-blue-600 to-blue-800 text-white hover:from-blue-700 hover:to-blue-900'
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
           >
             {isProcessing ? (
-              <span className="flex items-center justify-center">
-                <RefreshCw size={18} className="animate-spin mr-2" />
-                Processing Transaction...
+              <span className="flex items-center gap-2">
+                <RefreshCw size={18} className="animate-spin text-white" />
+                Processing...
               </span>
             ) : (
-              `Buy ${tokenAmount} Tokens for $${(tokenAmount * tokenPrice).toFixed(2)}`
+              `Buy ${tokenAmount} Tokens for $${(tokenPrice * Number(tokenAmount)).toFixed(2)}`
             )}
           </button>
           
-          <div className="mt-3 text-xs text-gray-400 flex items-start gap-2">
-            <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-            <p>
-              Token purchases are final and non-refundable. The value of tokens may fluctuate 
-              based on market conditions. Please invest responsibly.
-            </p>
+          <div className="mt-3 text-xs text-gray-500">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="text-gray-400" />
+              <p>
+                All purchases final. Token values may vary. Invest wisely.
+              </p>
+            </div>
           </div>
         </>
       ) : (
         <button
           onClick={connectWallet}
-          className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-md font-medium hover:from-blue-700 hover:to-blue-900 transition-all duration-300"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg cursor-pointer transition-all duration-200"
         >
-          Connect Wallet to Invest
+          Connect Wallet
         </button>
       )}
     </div>
