@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield } from 'lucide-react';
+import { Heart, Bed, Bath, Square, Wallet, Lock, MapPin, Shield,  } from 'lucide-react';
 import { useWallet } from '../hooks/usewallet';
 import { useFavorites } from '../hooks/useFavorites';
 import { useRouter } from 'next/navigation';
@@ -40,7 +40,6 @@ export default function FeaturedProperties() {
   useEffect(() => {
     const fetchFeaturedProperties = async () => {
       try {
-        // Directly fetch from the contract instead of using the API
         if (typeof window !== 'undefined' && window.ethereum) {
           const provider = new ethers.BrowserProvider(window.ethereum);
           const contract = new ethers.Contract(
@@ -49,48 +48,55 @@ export default function FeaturedProperties() {
             provider
           );
 
-          const [
-            propertyAddresses, 
-            values, 
-            propertyImageURLs
-          ] = await contract.getProperties();
+          const [propertyAddresses, values, , propertyImageURLs] = await contract.getProperties();
           
-          // Make sure we have at least 3 properties to display
           const propertyCount = Math.min(3, propertyAddresses ? propertyAddresses.length : 0);
           
           if (propertyCount === 0) {
             setFeaturedProperties([]);
             return;
           }
+
+          const formattedProperties = Array.from({ length: propertyCount }).map((_, index) => {
+            // Process image URLs
+            const imageUrls = propertyImageURLs?.[index] || [];
+            const processedImages = imageUrls.map((url: string) => {
+              if (!url) return null;
+              if (url.startsWith('http')) return url;
+              if (url.startsWith('Qm') || url.startsWith('baf')) {
+                return `https://gateway.pinata.cloud/ipfs/${url}`;
+              }
+              return url;
+            }).filter(Boolean); // Remove null values
+
+            return {
+              id: index,
+              title: propertyAddresses[index] || `Property ${index + 1}`,
+              description: "A beautiful property available for investment through blockchain technology.",
+              price: Number(ethers.formatUnits(values[index], 18)),
+              bedrooms: 3,
+              bathrooms: 2,
+              area: 1500,
+              address: propertyAddresses[index] || "",
+              city: "butwal",
+              state: "palpa",
+              zipCode: "",
+              propertyType: "Apartment",
+              apartmentType: "",
+              amenities: ["Parking", "Security", "Garden"],
+              // Only use default image if no valid images are found
+              images: processedImages.length > 0 ? processedImages : ["/imageforLanding/house.jpg"],
+              yearBuilt: 2020,
+              featured: true
+            };
+          });
           
-          // Format the properties data - take up to 3 properties
-          const formattedProperties = Array.from({ length: propertyCount }).map((_, index) => ({
-            id: index,
-            title: propertyAddresses[index] || `Property ${index + 1}`,
-            description: "A beautiful property available for investment through blockchain technology.",
-            price: Number(ethers.formatUnits(values[index], 18)),
-            bedrooms: 3,
-            bathrooms: 2,
-            area: 1500,
-            address: propertyAddresses[index] || "",
-            city: "City",
-            state: "State",
-            zipCode: "",
-            propertyType: "Apartment",
-            apartmentType: "",
-            amenities: ["Parking", "Security", "Garden"],
-            images: propertyImageURLs[index]?.length > 0 
-              ? propertyImageURLs[index].map((img: string) => 
-                  img.startsWith('http') ? img : `https://gateway.pinata.cloud/ipfs/${img}`)
-              : ["/imageforLanding/house.jpg", "/imageforLanding/house2.jpg", "/imageforLanding/house3.jpg"],
-            yearBuilt: 2020,
-            featured: true
-          }));
-          
+          console.log('Processed properties with images:', formattedProperties);
           setFeaturedProperties(formattedProperties);
         }
       } catch (error) {
         console.error('Error fetching featured properties:', error);
+        setFeaturedProperties([]);
       }
     };
 
