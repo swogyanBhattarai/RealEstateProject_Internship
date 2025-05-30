@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { Suspense } from 'react';
 import Navbar from './components/navbar';
 import HeroSection from './components/home/HeroSection';
 import FeaturedProperties from './components/home/FeaturedProperties';
@@ -11,8 +11,10 @@ import { WalletNotification } from './components/wallet-notification';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-black ">
-      <WalletNotification />
+    <div className="min-h-screen bg-black">
+      <Suspense fallback={null}>
+        <WalletNotification />
+      </Suspense>
       <Navbar />
       <HeroSection />
       <FeaturedProperties />

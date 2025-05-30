@@ -67,7 +67,7 @@ export default function FeaturedProperties() {
                 return `https://gateway.pinata.cloud/ipfs/${url}`;
               }
               return url;
-            }).filter(Boolean); // Remove null values
+            }).filter(Boolean); 
 
             return {
               id: index,

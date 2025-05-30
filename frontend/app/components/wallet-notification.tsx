@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useWallet } from './hooks/usewallet';
 
-export function WalletNotification() {
+function WalletNotificationContent() {
   const { connectWallet } = useWallet();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -44,4 +44,12 @@ export function WalletNotification() {
   }, [searchParams, connectWallet, router]);
 
   return null; // This component doesn't render anything
+}
+
+export function WalletNotification() {
+  return (
+    <Suspense fallback={null}>
+      <WalletNotificationContent />
+    </Suspense>
+  );
 }
